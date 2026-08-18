@@ -10,7 +10,7 @@ import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { randomUUID } from 'node:crypto'
 import { statSync } from 'node:fs'
-import { DatabaseSync } from 'node:sqlite'
+import type { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { mkdir, open } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import {

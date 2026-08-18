@@ -12,3 +12,4 @@
 | [`retention/`](output-retention/README.md) | 限制保留文本和项集合的大小 |
 | [`atomic-write/`](atomic-write/README.md) | 以原子方式替换文件 |
 | [`native-command/`](native-command/README.md) | 不经 shell 运行宿主原生命令 |
+| [`sqlite-runtime/`](sqlite-runtime/README.md) | 通过运行时选择的驱动运行 SQLite |

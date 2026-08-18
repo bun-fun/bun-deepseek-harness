@@ -6,7 +6,7 @@
  * @module @deepseek-ai/dsh-storage-sqlite/schema
  */
 
-import { DatabaseSync } from 'node:sqlite'
+import { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { mkdir, open } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { StorageError } from '@deepseek-ai/dsh-storage'

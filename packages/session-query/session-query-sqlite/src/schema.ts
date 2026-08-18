@@ -1,6 +1,6 @@
 /** SQLite schema for the disposable session full-text read model. */
 
-import type { DatabaseSync } from 'node:sqlite'
+import { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { mkdir, open } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
@@ -49,7 +49,6 @@ export async function openSearchDatabase(path: string, journalMode: JournalMode)
     await mkdir(dirname(actual), { recursive: true, mode: 0o700 })
     await createDatabaseFile(actual)
   }
-  const { DatabaseSync } = await import('node:sqlite')
   const db = new DatabaseSync(actual)
   try {
     const { application_id: applicationId } = db.prepare('PRAGMA application_id').get() as { application_id: number }

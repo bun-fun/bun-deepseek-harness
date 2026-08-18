@@ -7,7 +7,7 @@
  * @module @deepseek-ai/dsh-storage-sqlite/unit
  */
 
-import type { DatabaseSync, StatementSync } from 'node:sqlite'
+import type { DatabaseSync, StatementSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { StorageError } from '@deepseek-ai/dsh-storage'
 import type { KvUnit, KvUnitDescriptor } from '@deepseek-ai/dsh-storage'
 import { recordTableName } from './schema.ts'

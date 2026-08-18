@@ -3941,6 +3941,7 @@
       "name": "@deepseek-ai/dsh-session-query-sqlite",
       "version": "0.1.0-rc.5",
       "dependencies": {
+        "@deepseek-ai/dsh-sqlite-runtime": "workspace:^",
         "@deepseek-ai/schemastery": "workspace:^",
       },
       "devDependencies": {
@@ -4066,6 +4067,7 @@
       "name": "@deepseek-ai/dsh-session-persistence-sqlite",
       "version": "0.1.0-rc.5",
       "dependencies": {
+        "@deepseek-ai/dsh-sqlite-runtime": "workspace:^",
         "@deepseek-ai/schemastery": "workspace:^",
       },
       "devDependencies": {
@@ -4780,6 +4782,7 @@
       "name": "@deepseek-ai/dsh-storage-sqlite",
       "version": "0.1.0-rc.5",
       "dependencies": {
+        "@deepseek-ai/dsh-sqlite-runtime": "workspace:^",
         "@deepseek-ai/schemastery": "workspace:^",
       },
       "devDependencies": {
@@ -5555,6 +5558,18 @@
     },
     "packages/util/output-retention": {
       "name": "@deepseek-ai/dsh-output-retention",
+      "version": "0.1.0-rc.5",
+      "devDependencies": {
+        "@deepseek-ai/cordis": "workspace:^",
+        "@deepseek-ai/dsh-invariants": "workspace:^",
+      },
+      "peerDependencies": {
+        "@deepseek-ai/cordis": "workspace:^",
+        "@deepseek-ai/dsh-invariants": "workspace:^",
+      },
+    },
+    "packages/util/sqlite-runtime": {
+      "name": "@deepseek-ai/dsh-sqlite-runtime",
       "version": "0.1.0-rc.5",
       "devDependencies": {
         "@deepseek-ai/cordis": "workspace:^",
@@ -6493,6 +6508,8 @@
     "@deepseek-ai/dsh-spill-local": ["@deepseek-ai/dsh-spill-local@workspace:packages/spill/spill-local"],
 
     "@deepseek-ai/dsh-spill-policy": ["@deepseek-ai/dsh-spill-policy@workspace:packages/spill/spill-policy"],
+
+    "@deepseek-ai/dsh-sqlite-runtime": ["@deepseek-ai/dsh-sqlite-runtime@workspace:packages/util/sqlite-runtime"],
 
     "@deepseek-ai/dsh-storage": ["@deepseek-ai/dsh-storage@workspace:packages/storage/storage"],
 

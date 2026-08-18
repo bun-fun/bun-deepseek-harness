@@ -24,6 +24,9 @@
       "path": "../../session/session-persistence"
     },
     {
+      "path": "../../util/sqlite-runtime"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     },
     {
