@@ -12,7 +12,7 @@
  * @module @deepseek-ai/dsh-session-telemetry-otel
  */
 
-import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
 import z from '@deepseek-ai/schemastery'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-command-feedback'
@@ -38,7 +38,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources'
 
 // The package's own manifest is the single source of the instrumentation-scope
 // version (same pattern as dsh-llm's attribution identity).
-const { version } = createRequire(import.meta.url)('../package.json') as { version: string }
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
 
 /** Session-sharing policy selected by {@link Config.mode}. */
 export enum SessionTelemetryMode {

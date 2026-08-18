@@ -122,7 +122,7 @@ function directoryEntries(
 ): LlmConfigurableProvider[] {
   const catalog = new Set(catalogProviderIds())
   const entries = new Map<string, LlmConfigurableProvider>()
-  const declare = (provider: string, displayName: string): void => {
+  const declareEntry = (provider: string, displayName: string): void => {
     entries.set(provider, {
       provider,
       displayName,
@@ -140,9 +140,9 @@ function directoryEntries(
   // every request. Catalog *membership* is unaffected, so `declare` above still
   // answers what pi-ai ships.
   for (const provider of catalog) {
-    if (catalogProviderTakesApiKey(provider)) declare(provider, provider)
+    if (catalogProviderTakesApiKey(provider)) declareEntry(provider, provider)
   }
-  for (const [provider, profile] of profiles) declare(provider, profile.displayName)
+  for (const [provider, profile] of profiles) declareEntry(provider, profile.displayName)
   return [...entries.values()]
 }
 

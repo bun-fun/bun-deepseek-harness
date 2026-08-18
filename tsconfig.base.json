@@ -197,6 +197,8 @@
       "@deepseek-ai/dsh-client-ui-conversation": ["./packages/client/ui-conversation/src"],
       "@deepseek-ai/dsh-client-ui-tool": ["./packages/client/ui-tool/src"],
       "@deepseek-ai/dsh-client-ui-deliverables": ["./packages/client/ui-deliverables/src"],
+      "@deepseek-ai/dsh-client-ui-directory-picker-browse": ["./packages/client/ui-directory-picker-browse/src"],
+      "@deepseek-ai/dsh-client-ui-directory-picker-native": ["./packages/client/ui-directory-picker-native/src"],
       "@deepseek-ai/dsh-client-ui-workflow-run": ["./packages/client/ui-workflow-run/src"],
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],
       "@deepseek-ai/dsh-client-ui-commands": ["./packages/client/ui-commands/src"],
@@ -273,7 +275,41 @@
         "./packages/test-support/*/src",
         "./packages/host/*/src",
         "./packages/client/*/src"
-      ]
+      ],
+      // Subpath imports into package src/ directories (for test files that need
+      // internal modules not exported from the package root).
+      "@deepseek-ai/dsh-session-persistence-jsonl/src/*": ["./packages/session/session-persistence-jsonl/src/*"],
+      "@deepseek-ai/dsh-agent-instructions/src/*": ["./packages/context/agent-instructions/src/*"],
+      "@deepseek-ai/dsh-client-locale/src/*": ["./packages/client/locale/src/*"],
+      "@deepseek-ai/dsh-compaction-basic/src/*": ["./packages/compaction/compaction-basic/src/*"],
+      "@deepseek-ai/dsh-mcp-client/src/*": ["./packages/mcp/mcp-client/src/*"],
+      "@deepseek-ai/dsh-terminal-bash/src/*": ["./packages/terminal/terminal-bash/src/*"],
+      "@deepseek-ai/dsh-tool-terminal/src/*": ["./packages/terminal/tool-terminal/src/*"],
+      "@deepseek-ai/dsh-subprocess-local/src/*": ["./packages/subprocess/subprocess-local/src/*"],
+      "@deepseek-ai/dsh-sandbox-local/src/*": ["./packages/sandbox/sandbox-local/src/*"],
+      "@deepseek-ai/dsh-hooks-claude-code/src/*": ["./packages/hooks/hooks-claude-code/src/*"],
+      "@deepseek-ai/dsh-hooks-codex/src/*": ["./packages/hooks/hooks-codex/src/*"],
+      "@deepseek-ai/dsh-lsp-stdio/src/*": ["./packages/lsp/lsp-stdio/src/*"],
+      "@deepseek-ai/dsh-web-search-deepseek/src/*": ["./packages/web/web-search-deepseek/src/*"],
+      "@deepseek-ai/dsh-tool-cordis/src/*": ["./packages/extensions/tool-cordis/src/*"],
+      "@deepseek-ai/dsh-client-ui-conversation/src/*": ["./packages/client/ui-conversation/src/*"],
+      "@deepseek-ai/dsh-client-ui-layout/src/*": ["./packages/client/ui-layout/src/*"],
+      "@deepseek-ai/dsh-client-runtime/src/*": ["./packages/client/runtime/src/*"],
+      "@deepseek-ai/dsh-client-web/src/*": ["./packages/client/web/src/*"],
+      "@deepseek-ai/dsh-tools/src/*": ["./packages/core/tools/src/*"],
+      "@deepseek-ai/dsh-session-stats/src/*": ["./packages/session/session-stats/src/*"],
+      "@deepseek-ai/dsh-message-feedback/src/*": ["./packages/feedback/message-feedback/src/*"],
+      "@deepseek-ai/dsh-tool-fs/src/*": ["./packages/fs/tool-fs/src/*"],
+      "@deepseek-ai/dsh-storage-domain/src/*": ["./packages/storage/storage-domain/src/*"],
+      "@deepseek-ai/dsh-storage-json/src/*": ["./packages/storage/storage-json/src/*"],
+      "@deepseek-ai/dsh-storage/src/*": ["./packages/storage/storage/src/*"],
+      "@deepseek-ai/dsh-workspace/src/*": ["./packages/workspace/workspace/src/*"],
+      "@deepseek-ai/dsh-sandbox-windows-acl/src/*": ["./packages/sandbox/sandbox-windows-acl/src/*"],
+      "@deepseek-ai/dsh-bash-sandbox/src/*": ["./packages/shell/bash-sandbox/src/*"],
+      "@deepseek-ai/dsh-code-runtime/src/*": ["./packages/code-runtime/code-runtime/src/*"],
+      "@deepseek-ai/dsh-code-runtime-worker-thread/src/*": ["./packages/code-runtime/code-runtime-worker-thread/src/*"],
+      "@deepseek-ai/dsh-llm-mock-server/src/*": ["./packages/test-support/llm-mock-server/src/*"],
+      "@deepseek-ai/dsh-session-projection-cache/src/*": ["./packages/session/session-projection-cache/src/*"]
     }
   }
 }

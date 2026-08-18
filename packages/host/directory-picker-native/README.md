@@ -18,3 +18,4 @@ None; this package neither assembles nor sends a provider request.
 
 - **Linux requires desktop tooling** — with neither Zenity nor KDialog installed, `pick` rejects with an actionable error; it does not fall back to a typed-path prompt (the browse backend is that fallback at the composition level).
 - **Windows has no mechanism fallback** — the child-process picker through packaged koffi is the only native tier, so a COM refusal or dialog crash surfaces the failure. The browse backend remains the fallback at the composition level.
+- **Bun hosts need real Node for the Windows dialog** — Bun's NAPI panics initializing koffi instead of reporting a load failure, so the spawner hands the worker to a real Node binary: the `DSH_WIN32_DIALOG_NODE` override first, then the first non-Bun `node` on `PATH`. With neither, `pick` rejects with an actionable error.

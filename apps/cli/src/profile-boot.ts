@@ -277,21 +277,30 @@ export async function runProfile(options: RunProfileOptions): Promise<{ ctx: Con
       // documented hot-reload contract. HMR injects the timer service, which a
       // bare custom profile may not mount either.
       if (ctx.get('hmr') === undefined) {
-        if (ctx.get('timer') === undefined) {
-          await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
+        if (ctx.get('loader')?.internal === undefined) {
+          // HMR requires Node's internal ESM loader (--expose-internals),
+          // which some runtimes (bun) cannot provide; live patch editing is
+          // then unavailable and a restart applies edits instead.
+          ctx.logger.warn(`${NAME}: config hot-reload unavailable: runtime provides no internal ESM loader`)
+        } else {
+          if (ctx.get('timer') === undefined) {
+            await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-timer' })
+          }
+          await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
         }
-        await ctx.loader.create({ name: '@deepseek-ai/cordis-plugin-hmr', config: { root: [] } })
       }
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: composed.profile.patchPath,
-        compose: composeLive,
-      })
-      await watchUserPatches(ctx, {
-        binName: NAME,
-        filename: homePatchPath(),
-        compose: composeLive,
-      })
+      if (ctx.get('hmr') !== undefined) {
+        await watchUserPatches(ctx, {
+          binName: NAME,
+          filename: composed.profile.patchPath,
+          compose: composeLive,
+        })
+        await watchUserPatches(ctx, {
+          binName: NAME,
+          filename: homePatchPath(),
+          compose: composeLive,
+        })
+      }
     } catch (error) {
       suppressShutdownError(ctx, signalShutdown.signal, error)
     }

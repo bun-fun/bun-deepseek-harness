@@ -7,7 +7,8 @@
  */
 
 import { Worker } from 'node:worker_threads'
-import { stripTypeScriptTypes } from 'node:module'
+import * as nodeModule from 'node:module'
+import tsBlankSpace from 'ts-blank-space'
 import type { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
@@ -82,6 +83,19 @@ const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
  * line/column positions intact.
  */
 const STRIP_WRAP = { prefix: 'async function __dsh_program__() {\n', suffix: '\n}' } as const
+
+/**
+ * Position-preserving type stripper: Node's experimental `stripTypeScriptTypes`
+ * where available, else ts-blank-space. Both replace removed syntax with
+ * whitespace, so the wrapper survives the strip byte-identical and the body
+ * slices back out with the model's own line/column positions intact. Like
+ * Node's strip, the ts-blank-space path rejects non-erasable syntax (for
+ * example `enum`) with a throw rather than emitting it.
+ */
+const stripTypeScriptTypes: (code: string) => string = nodeModule.stripTypeScriptTypes ?? ((code: string): string =>
+  tsBlankSpace(code, (node) => {
+    throw new Error(`Type-strip rejected non-erasable syntax: ${JSON.stringify(code.slice(node.pos, node.end))}`)
+  }))
 
 /** One in-flight run's host-side state, tracked for disposal. */
 interface LiveRun {

@@ -18,3 +18,4 @@
 
 - **Linux 依赖桌面工具**——Zenity 与 KDialog 均未安装时，`pick` 以包含解决建议的错误拒绝；它不会回退为手输路径提示（组合层面的回退是 browse 后端）。
 - **Windows 没有机制级回退**——通过打包依赖 koffi 运行的子进程选择器是唯一原生层级，因此 COM 拒绝或对话框崩溃会直接上报失败。组合层面的回退仍是 browse 后端。
+- **Bun 宿主需要真实 Node 才能打开 Windows 对话框**——Bun 的 NAPI 在初始化 koffi 时直接 panic，而不是上报加载失败，因此 spawn 逻辑把 worker 交给真实 Node 二进制：先取 `DSH_WIN32_DIALOG_NODE` 覆盖值，再从 `PATH` 上找第一个非 Bun 的 `node`。两者都没有时，`pick` 以包含解决建议的错误拒绝。

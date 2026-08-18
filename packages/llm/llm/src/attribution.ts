@@ -7,13 +7,15 @@
  * @module @deepseek-ai/dsh-llm/attribution
  */
 
-import { createRequire } from 'node:module'
+import { readFileSync } from 'node:fs'
 
 // The package's own manifest is the single source of the version so the
 // User-Agent cannot drift from what is published (`./package.json` is an
 // export of this package; the relative path resolves from both `src/` and
-// the bundled `lib/`).
-const { version } = createRequire(import.meta.url)('../package.json') as { version: string }
+// the bundled `lib/`). Read through `import.meta.url` rather than
+// `createRequire`: the tsx ESM hook under `bun --bun` breaks require-relative
+// resolution with an empty parent.
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
 
 /**
  * Static public application identity sent to LLM providers.

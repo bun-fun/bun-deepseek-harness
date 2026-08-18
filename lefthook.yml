@@ -8,17 +8,17 @@ pre-commit:
       glob: '*.i18n.yaml'
       exclude:
         - '.agents/notes/archived/**'
-      run: node_modules/.bin/tsx scripts/verify-translation-pairing.ts --cached {staged_files}
+      run: bun scripts/verify-translation-pairing.ts --cached {staged_files}
 
     - name: archived agent notes
       glob: '.agents/notes/archived/**'
-      run: node_modules/.bin/tsx scripts/verify-archived-agent-notes.ts
+      run: bun scripts/verify-archived-agent-notes.ts
 
     - name: lint (staged)
       glob: '*.{ts,tsx,mts,cts,mjs}'
       exclude:
         - 'vendor/*/src/**'
-      run: node_modules/.bin/tsx scripts/run-oxlint.ts --config .oxlintrc.staged.json --fix --no-error-on-unmatched-pattern {staged_files}
+      run: bun scripts/run-oxlint.ts --config .oxlintrc.staged.json --fix --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
 
     # Regenerate rather than reject: a dependency edit that forgot the notices
@@ -28,8 +28,8 @@ pre-commit:
     # lefthook only inspects files present on disk — so that one case still
     # falls through to the freshness assertion in the test lane.
     - name: third-party notices (staged)
-      glob: '{package.json,*/package.json,*/*/package.json,*/*/*/package.json,*/*/*/*/package.json,pnpm-workspace.yaml,*/*/pnpm-workspace.yaml,pnpm-lock.yaml,vendor/README.md,python/*/pyproject.toml,scripts/gen-third-party-notices.ts,scripts/build-exe-for-python-sdk.ts}'
-      run: node_modules/.bin/tsx scripts/gen-third-party-notices.ts && git add THIRD_PARTY_NOTICES.md
+      glob: '{package.json,*/package.json,*/*/package.json,*/*/*/package.json,*/*/*/*/package.json,bun.lock,vendor/README.md,python/*/pyproject.toml,scripts/gen-third-party-notices.ts,scripts/build-exe-for-python-sdk.ts}'
+      run: bun scripts/gen-third-party-notices.ts && git add THIRD_PARTY_NOTICES.md
 
     - name: whitespace (staged)
       run: git diff --cached --check
@@ -43,13 +43,13 @@ pre-merge-commit:
       glob: '*.i18n.yaml'
       exclude:
         - '.agents/notes/archived/**'
-      run: node_modules/.bin/tsx scripts/verify-translation-pairing.ts --cached {staged_files}
+      run: bun scripts/verify-translation-pairing.ts --cached {staged_files}
 
     - name: archived agent notes
       glob: '.agents/notes/archived/**'
-      run: node_modules/.bin/tsx scripts/verify-archived-agent-notes.ts
+      run: bun scripts/verify-archived-agent-notes.ts
 
 pre-push:
   jobs:
     - name: typecheck
-      run: pnpm run typecheck
+      run: bun run typecheck

@@ -152,8 +152,10 @@ describe('pickWin32Directory', () => {
   }, 30_000)
 
   // win32 hosts run the true COM smoke instead: a real dialog opens briefly
-  // and the abort service closes it (the same lever a disconnecting client pulls).
-  it.skipIf(process.platform !== 'win32')('opens and abort-closes a real dialog', async () => {
+  // and the abort service closes it (the same lever a disconnecting client
+  // pulls). Bun hosts skip too — they resolve a real Node binary or fail
+  // loud (win32-dialog-host.ts), so the smoke needs a real Node runtime.
+  it.skipIf(process.platform !== 'win32' || process.versions.bun !== undefined)('opens and abort-closes a real dialog', async () => {
     const controller = new AbortController()
     setTimeout(() => {
       controller.abort()
