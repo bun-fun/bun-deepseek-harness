@@ -1,133 +1,117 @@
 /**
- * koffi-backed Win32 bindings for the folder dialog: the COM vtable calls
- * behind {@link Win32DialogBindings} plus the cross-thread window closer the
- * driver uses to service aborts. The module loads on every platform; koffi
- * itself is imported lazily inside each function, so non-Windows processes
- * never load it — the same containment as the repo's other `win32.ts`
- * modules.
+ * `bun:ffi`-backed Win32 bindings for the folder dialog: the COM vtable calls
+ * behind {@link Win32DialogBindings} plus the title-based window closer the
+ * driver uses to service aborts. The module loads on every platform; `bun:ffi`
+ * itself is imported lazily inside each function, so non-Bun processes never
+ * load it — the same containment as the repo's other `win32.ts` modules.
  *
- * The COM surface used here (IModalWindow/IFileDialog/IFileOpenDialog and
+ * Bun has no built-in native dialog API, so this drives the modern
+ * `IFileOpenDialog` directly through Bun's FFI: `dlopen` loads ole32/user32,
+ * `CFunction` calls each vtable slot, and `read`/`toBuffer` extract out-params
+ * and the UTF-16 result. The conversation is identical to the one the previous
+ * koffi tier ran, minus the external runtime the driver had to resolve. The
  * IShellItem vtable order, the GUIDs, `FOS_*` and `SIGDN_FILESYSPATH`) is
  * frozen Windows ABI since Vista; slots are offsets into the vtable at the
  * object's first pointer.
  */
 
 import type { Win32DialogBindings, Win32FolderDialog } from './win32-dialog-logic.ts'
+import {
+  CLSCTX_INPROC_SERVER, CLSID_FILE_OPEN_DIALOG, COINIT_APARTMENTTHREADED,
+  DPI_AWARENESS_CONTEXTS, IID_IFILE_OPEN_DIALOG, SIGDN_FILESYSPATH,
+  SLOT_GET_DISPLAY_NAME, SLOT_GET_RESULT, SLOT_RELEASE, SLOT_SET_OPTIONS,
+  SLOT_SET_TITLE, SLOT_SHOW, WM_CLOSE,
+} from './win32-dialog-abi.ts'
 
-interface KoffiFunction { (...args: unknown[]): unknown }
-interface KoffiLibrary { func(convention: string, name: string, result: string, args: string[]): KoffiFunction }
-interface Koffi {
-  load(path: string): KoffiLibrary
-  proto(declaration: string): unknown
-  pointer(type: unknown): unknown
-  call(pointer: unknown, proto: unknown, ...args: unknown[]): unknown
-  decode(value: unknown, offsetOrType: unknown, type?: unknown): unknown
-  register(fn: (...args: unknown[]) => unknown, type: unknown): unknown
-  unregister(callback: unknown): void
-  sizeof(type: string): number
-  view(ref: unknown, len: number): ArrayBuffer
+// The repo pins `types: ["node"]`, so `bun:ffi`'s own type surface is
+// unavailable; the ambient subset lives in `bun-ffi.d.ts`.
+
+/** One exported native symbol as Bun's FFI hands it back. */
+interface FfiSymbol { (...args: unknown[]): unknown }
+/** The dlopen result: symbols keyed by their definition name. */
+interface FfiLibrary { symbols: Record<string, FfiSymbol | undefined> }
+/** The `bun:ffi` surface this module uses (a subset of the module's exports). */
+interface BunFfi {
+  dlopen(name: string, definitions: Record<string, { args: string[]; returns: string }>): FfiLibrary
+  CFunction: new (options: { ptr: number; args: string[]; returns: string; cfa: string }) => FfiSymbol
+  ptr(view: ArrayBufferView): number
+  read: { ptr(address: number): number }
+  toBuffer(address: number, offset: number, length: number): ArrayBuffer
 }
 
+/** The pointer width of the running process: 8 on x64/arm64, 4 on ia32. */
+const POINTER_SIZE = process.arch === 'ia32' ? 4 : 8
+
 /**
- * Read a NUL-terminated UTF-16 string at a native address. koffi's
- * `_Out_ void **` out-params surface a raw address, and
- * `koffi.decode(addr, 'str16')` would dereference it as a pointer — crash
- * on real Windows — so view the memory directly instead.
+ * Read a NUL-terminated UTF-16 string at a native address. The COM
+ * `_Out_ LPWSTR` surface hands back a raw address; `toBuffer` views the
+ * memory directly instead of asking FFI to dereference it.
+ * @param ffi - the loaded `bun:ffi` module.
+ * @param address - the native address of the UTF-16 string.
+ * @returns the decoded string, up to the first NUL.
  */
-function readUtf16(koffi: Koffi, address: unknown): string {
-  const bytes = Buffer.from(koffi.view(address, 32768))
+function readUtf16(ffi: BunFfi, address: number): string {
+  const bytes = Buffer.from(ffi.toBuffer(address, 0, 32768))
   let end = 0
   while (end + 1 < bytes.length && bytes[end] !== 0) end += 2
   return bytes.toString('utf16le', 0, end)
 }
 
-const COINIT_APARTMENTTHREADED = 0x2
-const CLSCTX_INPROC_SERVER = 0x1
-const SIGDN_FILESYSPATH = 0x80058000 | 0
 /**
- * Thread DPI awareness contexts, best first: per-monitor-v2 (Windows 10
- * 1703+), per-monitor (1607+), then system-aware. `SetThreadDpiAwarenessContext`
- * returns NULL for an unsupported context instead of throwing, so the caller
- * cascades to the best one the host accepts; DPI stays a cosmetic
- * best-effort — an unsupported host still gets the modern dialog.
+ * Load the `bun:ffi` module, refusing loudly on non-Bun runtimes instead of
+ * surfacing a module-resolution failure from deep inside the conversation.
+ * @returns the loaded `bun:ffi` module.
  */
-const DPI_AWARENESS_CONTEXTS = [-4, -3, -2]
-const WM_CLOSE = 0x10
-
-/** IFileOpenDialog vtable slots (IUnknown 0-2, IModalWindow 3, IFileDialog 4+). */
-const SLOT_RELEASE = 2
-const SLOT_SHOW = 3
-const SLOT_SET_OPTIONS = 9
-const SLOT_SET_TITLE = 17
-const SLOT_GET_RESULT = 20
-/** IShellItem vtable slot for `GetDisplayName`. */
-const SLOT_GET_DISPLAY_NAME = 5
-
-/**
- * Encode a canonical GUID string as its 16 little-endian bytes.
- * @param text - the `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` form.
- * @returns the in-memory GUID bytes CoCreateInstance expects.
- */
-function guidBytes(text: string): Buffer {
-  const match = /^([0-9a-f]{8})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{4})-([0-9a-f]{12})$/i.exec(text) as RegExpExecArray
-  const bytes = Buffer.alloc(16)
-  bytes.writeUInt32LE(parseInt(match[1] as string, 16), 0)
-  bytes.writeUInt16LE(parseInt(match[2] as string, 16), 4)
-  bytes.writeUInt16LE(parseInt(match[3] as string, 16), 6)
-  Buffer.from((match[4] as string) + (match[5] as string), 'hex').copy(bytes, 8)
-  return bytes
+async function loadBunFfi(): Promise<BunFfi> {
+  if (process.versions.bun === undefined) {
+    throw new Error('the win32 folder dialog requires the Bun runtime (bun:ffi drives the IFileOpenDialog COM conversation)')
+  }
+  return await import('bun:ffi') as unknown as BunFfi
 }
 
-const CLSID_FILE_OPEN_DIALOG = guidBytes('dc1c5a9c-e88a-4dde-a5a1-60f82a20aef7')
-const IID_IFILE_OPEN_DIALOG = guidBytes('d57c7288-d4ad-4768-be02-9d969532d960')
-
 /**
- * Load koffi and expose the dialog bindings for this thread.
+ * Load the dialog bindings for this thread.
  * @returns the bindings {@link runFolderDialog} sequences against.
  */
 export async function loadWin32DialogBindings(): Promise<Win32DialogBindings> {
-  const koffi = (await import('koffi')).default as unknown as Koffi
-  const ole32 = koffi.load('ole32.dll')
-  const user32 = koffi.load('user32.dll')
-  const kernel32 = koffi.load('kernel32.dll')
+  const ffi = await loadBunFfi()
+  const ole32 = ffi.dlopen('ole32.dll', {
+    CoInitializeEx: { args: ['ptr', 'u32'], returns: 'i32' },
+    CoUninitialize: { args: [], returns: 'void' },
+    CoCreateInstance: { args: ['ptr', 'ptr', 'u32', 'ptr', 'ptr'], returns: 'i32' },
+    CoTaskMemFree: { args: ['ptr'], returns: 'void' },
+  })
 
-  // Vtable slots and out-pointers are pointer-width offsets: 8 on x64/arm64,
-  // 4 on ia32 — koffi reports the running process's width.
-  const pointerSize = koffi.sizeof('void *')
-  const coInitializeEx = ole32.func('__stdcall', 'CoInitializeEx', 'int32', ['void *', 'uint32'])
-  const coUninitialize = ole32.func('__stdcall', 'CoUninitialize', 'void', [])
-  const coCreateInstance = ole32.func('__stdcall', 'CoCreateInstance', 'int32', ['void *', 'void *', 'uint32', 'void *', 'void *'])
-  const coTaskMemFree = ole32.func('__stdcall', 'CoTaskMemFree', 'void', ['void *'])
-  const getCurrentThreadId = kernel32.func('__stdcall', 'GetCurrentThreadId', 'uint32', [])
+  // The DPI symbol is a Windows 10 1607+ addition; `dlopen` refuses a missing
+  // symbol at load, so the whole definition (and the opt-in with it) is
+  // dropped when the host lacks it — the dialog still works, just without a
+  // per-thread DPI correction on museum hosts.
+  let setThreadDpiAwarenessContext: FfiSymbol | undefined
+  try {
+    setThreadDpiAwarenessContext = ffi.dlopen('user32.dll', {
+      SetThreadDpiAwarenessContext: { args: ['isize'], returns: 'ptr' },
+    }).symbols.SetThreadDpiAwarenessContext
+  } catch {
+    setThreadDpiAwarenessContext = undefined
+  }
 
-  const protoShow = koffi.proto('int32 __stdcall DshDialogShow(void *self, void *owner)')
-  const protoSetOptions = koffi.proto('int32 __stdcall DshDialogSetOptions(void *self, uint32 options)')
-  const protoSetTitle = koffi.proto('int32 __stdcall DshDialogSetTitle(void *self, str16 title)')
-  const protoGetResult = koffi.proto('int32 __stdcall DshDialogGetResult(void *self, _Out_ void **item)')
-  const protoGetDisplayName = koffi.proto('int32 __stdcall DshItemGetDisplayName(void *self, int32 form, _Out_ void **name)')
-  const protoRelease = koffi.proto('uint32 __stdcall DshComRelease(void *self)')
+  const coInitializeEx = ole32.symbols.CoInitializeEx as FfiSymbol
+  const coUninitialize = ole32.symbols.CoUninitialize as FfiSymbol
+  const coCreateInstance = ole32.symbols.CoCreateInstance as FfiSymbol
+  const coTaskMemFree = ole32.symbols.CoTaskMemFree as FfiSymbol
 
-  /** Bind vtable slot `slot` of COM object `self` to a caller through `proto`. */
-  const method = (self: unknown, slot: number, proto: unknown): (...args: unknown[]) => number => {
-    const vtable = koffi.decode(self, 'void *')
-    const fn = koffi.decode(vtable, slot * pointerSize, 'void *')
-    return (...args: unknown[]) => koffi.call(fn, proto, self, ...args) as number
+  /** Bind vtable slot `slot` of COM object `self` to a caller through `CFunction`. */
+  const method = (self: number, slot: number, args: string[], returns: string): FfiSymbol => {
+    const vtable = ffi.read.ptr(self)
+    const fn = ffi.read.ptr(vtable + slot * POINTER_SIZE)
+    return new ffi.CFunction({ ptr: fn, args: ['ptr', ...args], returns, cfa: 'stdcall' })
   }
 
   return {
     setThreadDpiAwareness: () => {
-      let setContext: KoffiFunction
-      try {
-        setContext = user32.func('__stdcall', 'SetThreadDpiAwarenessContext', 'void *', ['intptr'])
-      } catch {
-        // Symbol absent (pre-1607 Windows): no per-thread DPI control exists.
-        // Proceed anyway — the cost is a blurry dialog above 100 % scaling on
-        // museum hosts, and the modern picker still beats dropping to the
-        // legacy 5.1 tree over a cosmetic concern.
-        return
-      }
+      if (setThreadDpiAwarenessContext === undefined) return
       for (const context of DPI_AWARENESS_CONTEXTS) {
-        if (setContext(context) !== null) return
+        if (setThreadDpiAwarenessContext(context) !== null) return
       }
       // Unreachable in practice (SYSTEM_AWARE is accepted wherever the symbol
       // exists); if a host ever refuses everything, the dialog still works —
@@ -137,34 +121,36 @@ export async function loadWin32DialogBindings(): Promise<Win32DialogBindings> {
     coUninitialize: () => {
       coUninitialize()
     },
-    currentThreadId: () => getCurrentThreadId() as number,
     createFolderDialog: (): Win32FolderDialog => {
-      const out = Buffer.alloc(pointerSize)
-      const created = coCreateInstance(CLSID_FILE_OPEN_DIALOG, null, CLSCTX_INPROC_SERVER, IID_IFILE_OPEN_DIALOG, out) as number
+      const out = Buffer.alloc(POINTER_SIZE)
+      const created = coCreateInstance(CLSID_FILE_OPEN_DIALOG, null, CLSCTX_INPROC_SERVER, IID_IFILE_OPEN_DIALOG, ffi.ptr(out)) as number
       if (created < 0) throw new Error(`CoCreateInstance(FileOpenDialog) failed: HRESULT 0x${(created >>> 0).toString(16)}`)
-      const dialog = koffi.decode(out, 'void *')
+      const dialog = ffi.read.ptr(ffi.ptr(out))
       return {
-        setOptions: options => method(dialog, SLOT_SET_OPTIONS, protoSetOptions)(options),
-        setTitle: title => method(dialog, SLOT_SET_TITLE, protoSetTitle)(title),
-        show: () => method(dialog, SLOT_SHOW, protoShow)(null),
+        setOptions: options => method(dialog, SLOT_SET_OPTIONS, ['u32'], 'i32')(dialog, options) as number,
+        setTitle: (title) => {
+          const titleBuf = Buffer.from(`${title}\0`, 'utf16le')
+          return method(dialog, SLOT_SET_TITLE, ['ptr'], 'i32')(dialog, ffi.ptr(titleBuf)) as number
+        },
+        show: () => method(dialog, SLOT_SHOW, ['ptr'], 'i32')(dialog, null) as number,
         resultPath: () => {
-          const itemOut: unknown[] = [null]
-          const gotItem = method(dialog, SLOT_GET_RESULT, protoGetResult)(itemOut)
+          const itemOut = Buffer.alloc(POINTER_SIZE)
+          const gotItem = method(dialog, SLOT_GET_RESULT, ['ptr'], 'i32')(dialog, ffi.ptr(itemOut)) as number
           if (gotItem < 0) return { hr: gotItem }
-          const item = itemOut[0]
+          const item = ffi.read.ptr(ffi.ptr(itemOut))
           try {
-            const nameOut: unknown[] = [null]
-            const gotName = method(item, SLOT_GET_DISPLAY_NAME, protoGetDisplayName)(SIGDN_FILESYSPATH, nameOut)
+            const nameOut = Buffer.alloc(POINTER_SIZE)
+            const gotName = method(item, SLOT_GET_DISPLAY_NAME, ['i32', 'ptr'], 'i32')(item, SIGDN_FILESYSPATH, ffi.ptr(nameOut)) as number
             if (gotName < 0) return { hr: gotName }
-            const path = readUtf16(koffi, nameOut[0])
-            coTaskMemFree(nameOut[0])
+            const path = readUtf16(ffi, ffi.read.ptr(ffi.ptr(nameOut)))
+            coTaskMemFree(ffi.read.ptr(ffi.ptr(nameOut)))
             return { hr: gotName, path }
           } finally {
-            method(item, SLOT_RELEASE, protoRelease)()
+            method(item, SLOT_RELEASE, [], 'u32')(item)
           }
         },
         release: () => {
-          method(dialog, SLOT_RELEASE, protoRelease)()
+          method(dialog, SLOT_RELEASE, [], 'u32')(dialog)
         },
       }
     },
@@ -172,24 +158,25 @@ export async function loadWin32DialogBindings(): Promise<Win32DialogBindings> {
 }
 
 /**
- * Post `WM_CLOSE` to every window of a native thread — the driver's abort
- * lever against the worker blocked inside `Show`, after which `Show` returns
- * `HRESULT_CANCELLED` and the worker unwinds normally.
- * @param threadId - the dialog thread's native id (from the `showing` notice).
+ * Post `WM_CLOSE` to the top-level window whose caption is exactly `title` —
+ * the driver's abort lever against a worker blocked inside `Show`, after
+ * which `Show` returns `HRESULT_CANCELLED` and the worker unwinds normally.
+ * The dialog caption is the exact `SetTitle` text, so a title lookup needs no
+ * window enumeration callback (Bun's FFI `JSCallback` trampoline is
+ * unavailable on Windows). A missing window posts nothing — the driver's
+ * retry cadence re-searches as the dialog window appears.
+ * @param title - the exact dialog caption (`SetTitle` text).
  */
-export async function closeThreadWindows(threadId: number): Promise<void> {
-  const koffi = (await import('koffi')).default as unknown as Koffi
-  const user32 = koffi.load('user32.dll')
-  const enumThreadWindows = user32.func('__stdcall', 'EnumThreadWindows', 'int', ['uint32', 'void *', 'intptr'])
-  const postMessageW = user32.func('__stdcall', 'PostMessageW', 'int', ['void *', 'uint32', 'uintptr', 'intptr'])
-  const protoEnumProc = koffi.proto('int __stdcall DshEnumThreadWndProc(void *hwnd, intptr lparam)')
-  const callback = koffi.register((hwnd: unknown) => {
-    postMessageW(hwnd, WM_CLOSE, 0, 0)
-    return 1
-  }, koffi.pointer(protoEnumProc))
-  try {
-    enumThreadWindows(threadId, callback, 0)
-  } finally {
-    koffi.unregister(callback)
-  }
+export async function closeDialogWindow(title: string): Promise<void> {
+  const ffi = await loadBunFfi()
+  const user32 = ffi.dlopen('user32.dll', {
+    FindWindowW: { args: ['ptr', 'ptr'], returns: 'ptr' },
+    PostMessageW: { args: ['ptr', 'u32', 'usize', 'isize'], returns: 'i32' },
+  })
+  const titleBuf = Buffer.from(`${title}\0`, 'utf16le')
+  const findWindowW = user32.symbols.FindWindowW as FfiSymbol
+  const postMessageW = user32.symbols.PostMessageW as FfiSymbol
+  const hwnd = findWindowW(null, ffi.ptr(titleBuf))
+  if (hwnd === null) return
+  postMessageW(hwnd, WM_CLOSE, 0, 0)
 }

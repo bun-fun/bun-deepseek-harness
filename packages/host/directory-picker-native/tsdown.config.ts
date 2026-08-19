@@ -3,7 +3,8 @@ import { defineConfig } from 'tsdown'
 /**
  * Node-only backend. The Win32 dialog worker builds as its own CJS entry
  * (mirroring dsh-workflow-worker-thread's worker): path-loaded by the driver,
- * inlining the dialog logic while koffi stays an external native require.
+ * inlining the dialog logic while `bun:ffi` stays an external built-in that
+ * only the Bun runtime resolves.
  */
 export default defineConfig([
   {
@@ -15,6 +16,7 @@ export default defineConfig([
     fixedExtension: false,
     dts: false,
     clean: false,
+    deps: { neverBundle: ['bun:ffi'] },
   },
   {
     // The artifact is lib/worker.cjs (the ./worker export the workspace
@@ -27,5 +29,6 @@ export default defineConfig([
     fixedExtension: false,
     dts: false,
     clean: false,
+    deps: { neverBundle: ['bun:ffi'] },
   },
 ])

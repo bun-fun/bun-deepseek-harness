@@ -1,69 +1,60 @@
 /**
- * Real-Node resolution for the koffi-backed dialog worker: a real-Node host
- * keeps its own binary; a Bun host honors the `DSH_WIN32_DIALOG_NODE`
- * override or scans `PATH` for a non-Bun binary, failing loud when none
- * exists (Bun's NAPI panics initializing koffi instead of reporting the
- * failure). The real probe needs a real Node binary, so its happy path and
- * the probe-fallback branch self-skip on Bun hosts — CI runs real Node and
- * exercises them.
+ * Dialog-worker spawning for the bun:ffi-backed picker: the child always runs
+ * under this process's own runtime — Bun hosts hand the source `.ts` entry to
+ * Bun directly, Node hosts (test runners, the pre-bun distribution) reach it
+ * through the tsx ESM hook, and built consumers launch the bundled `worker.cjs`
+ * next to the module. The title travels via `DSH_DIALOG_TITLE` and the channel
+ * is IPC, so the driver maps messages onto its promise.
  */
 
-import { delimiter, dirname, join } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { probeIsRealNode, resolveDialogNode, type DialogNodeInternals } from '../src/win32-dialog-host.ts'
+import { fileURLToPath } from 'node:url'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
-const nodeExecutable = process.platform === 'win32' ? 'node.exe' : 'node'
+const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
+vi.mock('node:child_process', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  return { ...actual, spawn: spawnMock }
+})
 
-function bunInternals(overrides: Partial<DialogNodeInternals> = {}): DialogNodeInternals {
-  return { hostIsBun: true, env: {}, isRealNode: () => false, ...overrides }
-}
+import { closeDialogWindow, spawnDialogWorker } from '../src/win32-dialog-host.ts'
 
-describe('resolveDialogNode', () => {
-  it('keeps the host binary under real Node', () => {
-    expect(resolveDialogNode({ hostIsBun: false })).toBe(process.execPath)
+const sourceEntry = fileURLToPath(new URL('../src/win32-dialog-worker.ts', import.meta.url))
+
+const originalBunVersion = process.versions.bun
+
+describe('spawnDialogWorker', () => {
+  beforeAll(() => {
+    ;(process.versions as Record<string, string | undefined>).bun = '1.3.14'
+  })
+  afterAll(() => {
+    ;(process.versions as Record<string, string | undefined>).bun = originalBunVersion
   })
 
-  it('honors a real-Node DSH_WIN32_DIALOG_NODE override', () => {
-    const node = join('C:\\Program Files\\nodejs', nodeExecutable)
-    const internals = bunInternals({ env: { DSH_WIN32_DIALOG_NODE: node }, isRealNode: () => true })
-    expect(resolveDialogNode(internals)).toBe(node)
-  })
-
-  it('rejects a DSH_WIN32_DIALOG_NODE override that is not real Node', () => {
-    const node = join('C:\\bun', nodeExecutable)
-    const internals = bunInternals({ env: { DSH_WIN32_DIALOG_NODE: node } })
-    expect(() => resolveDialogNode(internals)).toThrow(/DSH_WIN32_DIALOG_NODE=.*not real Node/)
-  })
-
-  it('scans PATH for the first real Node binary, skipping empty entries', () => {
-    const bunDir = 'C:\\bun'
-    const nodeDir = 'C:\\Program Files\\nodejs'
-    const realNode = join(nodeDir, nodeExecutable)
-    const internals = bunInternals({
-      env: { PATH: [bunDir, '', nodeDir].join(delimiter) },
-      isRealNode: candidate => candidate === realNode,
+  it('runs the source worker under this Bun binary with the title in env and an IPC channel', () => {
+    spawnDialogWorker({ title: 'Pick' })
+    expect(spawnMock).toHaveBeenCalledWith(process.execPath, [sourceEntry], {
+      env: expect.objectContaining({ DSH_DIALOG_TITLE: 'Pick' }),
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+      windowsHide: true,
     })
-    expect(resolveDialogNode(internals)).toBe(realNode)
   })
 
-  it('fails loud when no real Node binary exists', () => {
-    const internals = bunInternals({ env: { PATH: 'C:\\bun' } })
-    expect(() => resolveDialogNode(internals)).toThrow(/install Node.js or set DSH_WIN32_DIALOG_NODE/)
-  })
-
-  it.skipIf(process.versions.bun !== undefined)('uses the real probe when no injectable one is given', () => {
-    const dir = dirname(process.execPath)
-    const resolved = resolveDialogNode({ hostIsBun: true, env: { PATH: dir } })
-    expect(resolved).toBe(join(dir, nodeExecutable))
+  it('reaches the source worker through the tsx ESM hook on a Node host', () => {
+    ;(process.versions as Record<string, string | undefined>).bun = undefined
+    try {
+      spawnDialogWorker({ title: 'Pick' })
+      expect(spawnMock).toHaveBeenCalledWith(process.execPath, ['--import', 'tsx/esm', sourceEntry], expect.objectContaining({
+        stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+        windowsHide: true,
+      }))
+    } finally {
+      ;(process.versions as Record<string, string | undefined>).bun = '1.3.14'
+    }
   })
 })
 
-describe('probeIsRealNode', () => {
-  it.skipIf(process.versions.bun !== undefined)('accepts a real Node binary', () => {
-    expect(probeIsRealNode(process.execPath)).toBe(true)
-  })
-
-  it('rejects a missing binary', () => {
-    expect(probeIsRealNode(join('definitely-missing-node-dir', nodeExecutable))).toBe(false)
+describe('closeDialogWindow re-export', () => {
+  it('exposes the title-based WM_CLOSE poster to the driver', () => {
+    expect(typeof closeDialogWindow).toBe('function')
   })
 })

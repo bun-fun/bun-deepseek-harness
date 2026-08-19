@@ -1,14 +1,15 @@
 /**
  * Driver tests: the child-process message protocol mapped onto the promise,
- * the WM_CLOSE abort service (including the show-race retry and the kill
- * last resort) against fakes, plus the real spawn plumbing — POSIX hosts
- * prove the default path rejects cleanly (koffi cannot load ole32 there),
- * and win32 hosts briefly open and auto-abort a real dialog.
+ * the WM_CLOSE-by-title abort service (including the show-race retry and the
+ * kill last resort) against fakes, plus the real spawn plumbing — POSIX hosts
+ * prove the default path rejects cleanly (no ole32.dll there), Node-host
+ * win32 proves the Bun-runtime refusal, and Bun win32 briefly opens and
+ * auto-aborts a real dialog.
  */
 
 import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
-import { pickWin32Directory, type Win32DialogInternals, type Win32DialogWorkerLike } from '../src/win32-dialog.ts'
+import { DIALOG_TITLE, pickWin32Directory, type Win32DialogInternals, type Win32DialogWorkerLike } from '../src/win32-dialog.ts'
 import type { Win32DialogWorkerMessage } from '../src/win32-dialog-worker.ts'
 
 class FakeWorker extends EventEmitter implements Win32DialogWorkerLike {
@@ -32,7 +33,7 @@ function harness(overrides: Partial<Win32DialogInternals> = {}): Harness {
     close,
     internals: {
       spawnWorker: () => worker,
-      closeThreadWindows: close,
+      closeDialogWindow: close,
       closeRetryMs: 1,
       ...overrides,
     },
@@ -45,7 +46,6 @@ describe('pickWin32Directory', () => {
   it('resolves the selected path and the cancellation null', async () => {
     const first = harness()
     const picked = pickWin32Directory(live(), first.internals)
-    first.worker.post({ kind: 'showing', threadId: 7 })
     first.worker.post({ kind: 'done', path: 'C:\\picked' })
     await expect(picked).resolves.toBe('C:\\picked')
     expect(first.close).not.toHaveBeenCalled()
@@ -85,36 +85,33 @@ describe('pickWin32Directory', () => {
     const spawnWorker = vi.fn()
     const controller = new AbortController()
     controller.abort()
-    await expect(pickWin32Directory(controller.signal, { spawnWorker, closeThreadWindows: async () => undefined }))
+    await expect(pickWin32Directory(controller.signal, { spawnWorker, closeDialogWindow: async () => undefined }))
       .rejects.toThrow('native directory picker aborted')
     expect(spawnWorker).not.toHaveBeenCalled()
   })
 
-  it('services an abort by closing the dialog thread windows until the worker reports', async () => {
+  it('services an abort by closing the dialog window until the worker reports', async () => {
     const { worker, internals, close } = harness()
     const controller = new AbortController()
     // Attach the expectation BEFORE driving the race: on a fast host the
     // close budget can exhaust (and reject) between waitFor ticks, and a
     // rejection with no listener yet would count as unhandled.
     const picked = expect(pickWin32Directory(controller.signal, internals)).rejects.toThrow('native directory picker aborted')
-    worker.post({ kind: 'showing', threadId: 99 })
     controller.abort()
     await vi.waitFor(() => {
-      expect(close).toHaveBeenCalledWith(99)
+      expect(close).toHaveBeenCalledWith(DIALOG_TITLE)
     })
     worker.post({ kind: 'done', path: null })
     await picked
   })
 
-  it('starts the close service on the showing notice when the abort came first', async () => {
+  it('retries the title-based close while posting rejects', async () => {
     const closeFailures = vi.fn(async () => { throw new Error('window not there yet') })
-    const { worker, internals } = harness({ closeThreadWindows: closeFailures })
+    const { worker, internals } = harness({ closeDialogWindow: closeFailures })
     const controller = new AbortController()
     // Attached before the race for the same unhandled-rejection reason above.
     const picked = expect(pickWin32Directory(controller.signal, internals)).rejects.toThrow('native directory picker aborted')
     controller.abort()
-    expect(closeFailures).not.toHaveBeenCalled()
-    worker.post({ kind: 'showing', threadId: 12 })
     await vi.waitFor(() => {
       expect(closeFailures.mock.calls.length).toBeGreaterThan(1)
     })
@@ -122,40 +119,44 @@ describe('pickWin32Directory', () => {
     await picked
   })
 
-  it('kills a worker that never reports showing after an abort', async () => {
-    // The budget runs without a thread id (nothing to WM_CLOSE yet), so a
-    // worker hung before `showing` cannot dangle the pick.
+  it('kills a worker that never reports after an abort', async () => {
+    // The budget runs unconditionally, so a worker hung before the dialog
+    // window exists cannot dangle the pick.
     const { worker, internals, close } = harness()
     const controller = new AbortController()
     const picked = expect(pickWin32Directory(controller.signal, internals)).rejects.toThrow('dialog unresponsive; worker killed')
     controller.abort()
     await picked
     expect(worker.kill).toHaveBeenCalledOnce()
-    expect(close).not.toHaveBeenCalled()
+    expect(close).toHaveBeenCalledWith(DIALOG_TITLE)
   })
 
   it('kills an unresponsive worker after the close budget', async () => {
     const { worker, internals, close } = harness()
     const controller = new AbortController()
     const picked = pickWin32Directory(controller.signal, internals)
-    worker.post({ kind: 'showing', threadId: 5 })
     controller.abort()
     await expect(picked).rejects.toThrow('dialog unresponsive; worker killed')
     expect(worker.kill).toHaveBeenCalledOnce()
     expect(close.mock.calls.length).toBeGreaterThan(10)
   })
 
-  // POSIX hosts exercise the REAL default plumbing end to end: the tsx-bootstrapped
-  // worker spawns, loads koffi, fails to load ole32.dll, and reports the error.
+  // POSIX hosts exercise the REAL default plumbing end to end: the worker
+  // spawns under the host runtime, bun:ffi cannot load ole32.dll, and the
+  // failure is reported. The same applies to Node-host win32, where the
+  // worker refuses the non-Bun runtime before any FFI load.
   it.skipIf(process.platform === 'win32')('rejects through the real worker where the Win32 surface is unavailable', async () => {
     await expect(pickWin32Directory(live())).rejects.toThrow('win32 folder dialog failed')
   }, 30_000)
 
-  // win32 hosts run the true COM smoke instead: a real dialog opens briefly
-  // and the abort service closes it (the same lever a disconnecting client
-  // pulls). Bun hosts skip too — they resolve a real Node binary or fail
-  // loud (win32-dialog-host.ts), so the smoke needs a real Node runtime.
-  it.skipIf(process.platform !== 'win32' || process.versions.bun !== undefined)('opens and abort-closes a real dialog', async () => {
+  it.skipIf(process.platform !== 'win32' || process.versions.bun !== undefined)('rejects through the real worker on a Node-host win32', async () => {
+    await expect(pickWin32Directory(live())).rejects.toThrow('requires the Bun runtime')
+  }, 30_000)
+
+  // Bun-host win32 runs the true COM smoke instead: a real dialog opens
+  // briefly and the abort service closes it by title (the same lever a
+  // disconnecting client pulls).
+  it.skipIf(process.platform !== 'win32' || process.versions.bun === undefined)('opens and abort-closes a real dialog', async () => {
     const controller = new AbortController()
     setTimeout(() => {
       controller.abort()

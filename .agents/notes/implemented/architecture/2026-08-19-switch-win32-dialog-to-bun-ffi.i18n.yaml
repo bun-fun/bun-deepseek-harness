@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-19-switch-win32-dialog-to-bun-ffi.md
+2026-08-19-switch-win32-dialog-to-bun-ffi.md: 0c4b960657463dd52bf252e4c4589476767396e0
+2026-08-19-switch-win32-dialog-to-bun-ffi.zh.md: d6dee04e9d1151661927e703447817b54e7b84c7

@@ -2,8 +2,8 @@
  * Pure sequencing of the Win32 `IFileOpenDialog` folder-picker COM
  * conversation over injectable platform bindings, so every outcome path
  * (selection, cancellation, HRESULT failure, cleanup ordering) is testable on
- * any platform. The koffi-backed bindings live in
- * `win32-dialog-bindings.ts`, which only a real win32 process ever loads.
+ * any platform. The bun:ffi-backed bindings live in `win32-dialog-bindings.ts`,
+ * which only a real win32 process ever loads.
  */
 
 /** `HRESULT_FROM_WIN32(ERROR_CANCELLED)`: the user dismissed the dialog. */
@@ -73,12 +73,6 @@ export interface Win32DialogBindings {
    * @returns the created dialog surface; throws when creation fails.
    */
   createFolderDialog(): Win32FolderDialog
-  /**
-   * `GetCurrentThreadId` — the native id a driver needs to close this
-   * thread's windows from outside.
-   * @returns the calling thread's native id.
-   */
-  currentThreadId(): number
 }
 
 /**
@@ -96,16 +90,13 @@ function check(hr: number, what: string): number {
  * Run one modal folder-picker conversation on the calling thread: DPI opt-in,
  * STA init, dialog creation, `Show`, and result extraction, releasing the
  * dialog on every path.
- * @param bindings - the native surface (koffi-backed in production, fakes in tests).
+ * @param bindings - the native surface (bun:ffi-backed in production, fakes in tests).
  * @param title - the dialog title text.
- * @param onShowing - called with the native thread id immediately before the
- *   blocking `Show`, so a driver on another thread can close the dialog.
  * @returns the selected filesystem path, or null when the user cancels.
  */
 export function runFolderDialog(
   bindings: Win32DialogBindings,
   title: string,
-  onShowing: (threadId: number) => void,
 ): string | null {
   bindings.setThreadDpiAwareness()
   check(bindings.coInitializeSta(), 'CoInitializeEx')
@@ -116,7 +107,6 @@ export function runFolderDialog(
     try {
       check(dialog.setOptions(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR), 'SetOptions')
       check(dialog.setTitle(title), 'SetTitle')
-      onShowing(bindings.currentThreadId())
       const shown = dialog.show()
       if (shown === HRESULT_CANCELLED) return null
       check(shown, 'Show')

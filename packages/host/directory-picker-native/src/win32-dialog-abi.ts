@@ -1,8 +1,7 @@
 /**
  * Shared Win32 ABI facts for the folder dialog: the frozen vtable layout,
- * GUIDs, and flag constants both the koffi and bun:ffi bindings
- * (`win32-dialog-bindings.ts` and `win32-dialog-bindings-bunffi.ts`) run
- * against. The COM surface (IModalWindow/IFileDialog/IFileOpenDialog and
+ * GUIDs, and flag constants the `bun:ffi` bindings (`win32-dialog-bindings.ts`)
+ * run against. The COM surface (IModalWindow/IFileDialog/IFileOpenDialog and
  * IShellItem vtable order, the GUIDs, `FOS_*` and `SIGDN_FILESYSPATH`) is
  * frozen Windows ABI since Vista; slots are offsets into the vtable at the
  * object's first pointer.

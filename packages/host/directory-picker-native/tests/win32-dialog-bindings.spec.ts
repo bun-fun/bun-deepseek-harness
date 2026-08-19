@@ -1,24 +1,26 @@
 /**
- * The koffi-backed bindings against a mocked `koffi` module (the same
+ * The bun:ffi-backed bindings against a mocked `bun:ffi` module (the same
  * technique as dsh-session-persistence-jsonl's win32 suite): a small in-memory
- * COM world stands in for ole32/user32/kernel32, keeping the vtable dispatch,
- * result extraction, memory hygiene, and the WM_CLOSE poster covered on every
- * host. The worker entry is exercised the same way with a mocked process
- * boundary (env title + `process.send`). Real-COM behavior is pinned by the
- * win32-only smoke in win32-dialog.spec.ts.
+ * COM world stands in for ole32/user32, keeping the vtable dispatch, result
+ * extraction, memory hygiene, and the WM_CLOSE poster covered on every host.
+ * The worker entry is exercised the same way with a mocked process boundary
+ * (env title + `process.send`). Real-COM behavior is pinned by the win32-only
+ * smoke in win32-dialog.spec.ts.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { HRESULT_CANCELLED, runFolderDialog } from '../src/win32-dialog-logic.ts'
 
 const E_FAIL = 0x80004005 | 0
 const WM_CLOSE = 0x10
 /**
- * Deliberately NOT 8: the bindings must derive vtable offsets and out-buffer
- * sizes from koffi.sizeof('void *'), and a hardcoded 8 anywhere fails against
- * this width (the win32-ia32 bug class).
+ * Derived from `process.arch` exactly like the bindings' own pointer width:
+ * the fake COM world computes vtable offsets and checks out-buffer sizes
+ * against the SAME width, so a hardcoded width anywhere in the bindings
+ * diverges and fails the vtable lookup or the out-buffer check — the
+ * win32-ia32 bug class, kept honest because bun:ffi has no `sizeof` to mock.
  */
-const FAKE_POINTER_SIZE = 4
+const FAKE_POINTER_SIZE = process.arch === 'ia32' ? 4 : 8
 
 interface ComWorld {
   coInitHr: number
@@ -29,124 +31,159 @@ interface ComWorld {
   hasThreadDpi: boolean
   /** Contexts `SetThreadDpiAwarenessContext` accepts; others return NULL. */
   supportedDpiContexts: number[]
-  enumThrows: boolean
   path: string
   titles: string[]
   options: number[]
   dpiContexts: unknown[]
   freed: unknown[]
   released: string[]
+  searchedTitles: string[]
   posted: { hwnd: unknown; message: number }[]
-  registered: number
-  unregistered: number
+  cfas: string[]
   uninitialized: number
+  windowHwnd: unknown
 }
 
 function comWorld(overrides: Partial<ComWorld> = {}): ComWorld {
   return {
     coInitHr: 0, coCreateHr: 0, showHr: 0, getResultHr: 0, getDisplayNameHr: 0,
-    hasThreadDpi: true, supportedDpiContexts: [-4], enumThrows: false,
+    hasThreadDpi: true, supportedDpiContexts: [-4],
     path: 'C:\\选中\\directory',
-    titles: [], options: [], dpiContexts: [], freed: [], released: [], posted: [],
-    registered: 0, unregistered: 0, uninitialized: 0,
+    titles: [], options: [], dpiContexts: [], freed: [], released: [],
+    searchedTitles: [], posted: [], cfas: [], uninitialized: 0, windowHwnd: null,
     ...overrides,
   }
 }
 
-/** Sentinel pointer objects standing in for native addresses. */
-interface FakePtr { kind: string; [key: string]: unknown }
+/**
+ * Install a fake `bun:ffi` over a fake COM world: native addresses are
+ * numeric tokens, vtable slots are bound per object, out-params are written
+ * through `memory`, and `toBuffer` fabricates the UTF-16 result string.
+ */
+function installFakeBunFfi(world: ComWorld): void {
+  const objects = { dialog: 0x1000, item: 0x2000 }
+  const nameAddr = 0x3000
+  const vtables = { dialog: 0x4000, item: 0x5000 }
+  const memory = new Map<number, number>()
+  const buffers = new Map<ArrayBufferView, number>()
+  const buffersByAddr = new Map<number, ArrayBufferView>()
+  const targets = new Map<number, { self: 'dialog' | 'item'; slot: number }>()
+  const vtableEntries = new Map<number, number>()
+  let nextBuffer = 0x6000
+  let nextFn = 0x10000
 
-function installFakeKoffi(world: ComWorld): void {
-  const dialogPtr: FakePtr = { kind: 'dialog' }
-  const itemPtr: FakePtr = { kind: 'item' }
-  const namePtr: FakePtr = { kind: 'name', text: world.path }
-  const outBuffers = new Map<unknown, FakePtr>()
-
-  const dispatch = (self: FakePtr, slot: number, args: unknown[]): number => {
-    if (self.kind === 'dialog') {
-      switch (slot) {
-        case 9: world.options.push(args[0] as number); return 0
-        case 17: world.titles.push(args[0] as string); return 0
-        case 3: return world.showHr
-        case 20: {
-          if (world.getResultHr < 0) return world.getResultHr
-          ;(args[0] as unknown[])[0] = itemPtr
-          return 0
-        }
-        case 2: world.released.push('dialog'); return 0
-        default: throw new Error(`unexpected dialog slot ${slot}`)
-      }
-    }
-    switch (slot) {
-      case 5: {
-        if (world.getDisplayNameHr < 0) return world.getDisplayNameHr
-        ;(args[1] as unknown[])[0] = namePtr
-        return 0
-      }
-      case 2: world.released.push('item'); return 0
-      default: throw new Error(`unexpected item slot ${slot}`)
+  for (const [self, slots] of [['dialog', [2, 3, 9, 17, 20]], ['item', [2, 5]]] as const) {
+    for (const slot of slots) {
+      vtableEntries.set(vtables[self] + slot * FAKE_POINTER_SIZE, nextFn)
+      targets.set(nextFn, { self, slot })
+      nextFn += 1
     }
   }
 
-  vi.doMock('koffi', () => ({
-    default: {
-      load: (dll: string) => ({
-        func: (_convention: string, name: string, _result: string, _args: string[]) => {
-          switch (name) {
-            case 'CoInitializeEx': return () => world.coInitHr
-            case 'CoUninitialize': return () => { world.uninitialized += 1 }
-            case 'CoCreateInstance': return (...args: unknown[]) => {
-              if (world.coCreateHr < 0) return world.coCreateHr
-              // The out-pointer must be allocated at the fake's pointer width.
-              if ((args[4] as Buffer).length !== FAKE_POINTER_SIZE) {
-                throw new Error(`CoCreateInstance out buffer must be ${FAKE_POINTER_SIZE} bytes`)
-              }
-              outBuffers.set(args[4], dialogPtr)
-              return 0
-            }
-            case 'CoTaskMemFree': return (ptr: unknown) => { world.freed.push(ptr) }
-            case 'GetCurrentThreadId': return () => 31337
-            case 'SetThreadDpiAwarenessContext': {
-              if (!world.hasThreadDpi) throw new Error(`${dll}: SetThreadDpiAwarenessContext not found`)
-              return (context: unknown) => {
-                world.dpiContexts.push(context)
-                return world.supportedDpiContexts.includes(context as number) ? { kind: 'previous-context' } : null
-              }
-            }
-            case 'EnumThreadWindows': return (_tid: unknown, callback: { fn: (hwnd: unknown, lparam: unknown) => number }, lparam: unknown) => {
-              if (world.enumThrows) throw new Error('EnumThreadWindows refused')
-              callback.fn({ kind: 'hwnd', n: 1 }, lparam)
-              callback.fn({ kind: 'hwnd', n: 2 }, lparam)
-              return 1
-            }
-            case 'PostMessageW': return (hwnd: unknown, message: number) => { world.posted.push({ hwnd, message }); return 1 }
-            default: throw new Error(`unexpected native import ${dll}/${name}`)
+  const dispatch = (target: { self: 'dialog' | 'item'; slot: number }, callArgs: unknown[]): number => {
+    const args = callArgs.slice(1)
+    if (target.self === 'dialog') {
+      switch (target.slot) {
+        case 9: world.options.push(args[0] as number); return 0
+        case 17: {
+          const bytes = buffersByAddr.get(args[0] as number)
+          if (bytes !== undefined) {
+            world.titles.push(Buffer.from(bytes as Uint8Array).toString('utf16le').replace(/\0+$/, ''))
           }
-        },
-      }),
-      proto: (declaration: string) => ({ declaration }),
-      pointer: (type: unknown) => type,
-      sizeof: (type: string) => { void type; return FAKE_POINTER_SIZE },
-      view: (value: unknown, len: number): ArrayBuffer => {
-        const bytes = Buffer.alloc(len)
-        bytes.write((value as FakePtr).text as string, 'utf16le')
-        return bytes.buffer
-      },
-      register: (fn: (hwnd: unknown, lparam: unknown) => number) => { world.registered += 1; return { fn } },
-      unregister: () => { world.unregistered += 1 },
-      decode: (value: unknown, offsetOrType: unknown): unknown => {
-        if (offsetOrType === 'str16') return (value as FakePtr).text
-        if (typeof offsetOrType === 'number') {
-          // Vtable slot read: offsets must be multiples of the fake width.
-          if (offsetOrType % FAKE_POINTER_SIZE !== 0) throw new Error(`vtable offset ${offsetOrType} is not pointer-aligned`)
-          const owner = (value as { owner: FakePtr }).owner
-          return { call: (args: unknown[]) => dispatch(owner, offsetOrType / FAKE_POINTER_SIZE, args) }
+          return 0
         }
-        // decode(x, 'void *'): out-buffer read or vtable read.
-        if (outBuffers.has(value)) return outBuffers.get(value)
-        return { owner: value as FakePtr }
+        case 3: return world.showHr
+        case 20: {
+          if (world.getResultHr < 0) return world.getResultHr
+          memory.set(args[0] as number, objects.item)
+          return 0
+        }
+        case 2: world.released.push('dialog'); return 0
+        default: throw new Error(`unexpected dialog slot ${target.slot}`)
+      }
+    }
+    switch (target.slot) {
+      case 5: {
+        if (world.getDisplayNameHr < 0) return world.getDisplayNameHr
+        memory.set(args[1] as number, nameAddr)
+        return 0
+      }
+      case 2: world.released.push('item'); return 0
+      default: throw new Error(`unexpected item slot ${target.slot}`)
+    }
+  }
+
+  const symbolFor = (dll: string, name: string): ((...args: unknown[]) => unknown) => {
+    switch (name) {
+      case 'CoInitializeEx': return () => world.coInitHr
+      case 'CoUninitialize': return () => { world.uninitialized += 1 }
+      case 'CoCreateInstance': return (...args: unknown[]) => {
+        if (world.coCreateHr < 0) return world.coCreateHr
+        // The out-pointer must be allocated at the bindings' pointer width.
+        if ((buffersByAddr.get(args[4] as number) as ArrayBufferView).byteLength !== FAKE_POINTER_SIZE) {
+          throw new Error(`CoCreateInstance out buffer must be ${FAKE_POINTER_SIZE} bytes`)
+        }
+        memory.set(args[4] as number, objects.dialog)
+        return 0
+      }
+      case 'CoTaskMemFree': return (addr: unknown) => { world.freed.push(addr) }
+      case 'SetThreadDpiAwarenessContext': {
+        if (!world.hasThreadDpi) throw new Error(`${dll}: SetThreadDpiAwarenessContext not found`)
+        return (context: unknown) => {
+          world.dpiContexts.push(context)
+          return world.supportedDpiContexts.includes(context as number) ? { kind: 'previous-context' } : null
+        }
+      }
+      case 'FindWindowW': return (_className: unknown, titleAddr: unknown) => {
+        const bytes = buffersByAddr.get(titleAddr as number)
+        if (bytes !== undefined) {
+          world.searchedTitles.push(Buffer.from(bytes as Uint8Array).toString('utf16le').replace(/\0+$/, ''))
+        }
+        return world.windowHwnd
+      }
+      case 'PostMessageW': return (hwnd: unknown, message: unknown) => { world.posted.push({ hwnd, message: message as number }); return 1 }
+      default: throw new Error(`unexpected native import ${dll}/${name}`)
+    }
+  }
+
+  vi.doMock('bun:ffi', () => ({
+    dlopen: (name: string, definitions: Record<string, unknown>) => ({
+      symbols: Object.fromEntries(Object.keys(definitions).map(n => [n, symbolFor(name, n)])),
+    }),
+    CFunction: vi.fn(function (this: unknown, options: { ptr: number; args: string[]; returns: string; cfa: string }) {
+      // A constructible implementation: the bindings build vtable callbacks
+      // with `new CFunction`, and vitest's `new` forwards to `Reflect.construct`,
+      // which refuses arrow functions. The mock returns the dispatcher closure,
+      // so the constructed value IS the callable (as Bun's real CFunction).
+      world.cfas.push(options.cfa)
+      const target = targets.get(options.ptr)
+      if (target === undefined) throw new Error(`no vtable target for fn pointer ${options.ptr}`)
+      return (...callArgs: unknown[]) => dispatch(target, callArgs)
+    }),
+    ptr: (view: ArrayBufferView) => {
+      let addr = buffers.get(view)
+      if (addr === undefined) {
+        addr = nextBuffer
+        nextBuffer += 1
+        buffers.set(view, addr)
+        buffersByAddr.set(addr, view)
+      }
+      return addr
+    },
+    read: {
+      ptr: (addr: number) => {
+        const memoryHit = memory.get(addr)
+        if (memoryHit !== undefined) return memoryHit
+        if (addr === objects.dialog) return vtables.dialog
+        if (addr === objects.item) return vtables.item
+        const entry = vtableEntries.get(addr)
+        if (entry !== undefined) return entry
+        throw new Error(`unexpected read.ptr(${addr})`)
       },
-      call: (fn: { call: (args: unknown[]) => number }, _proto: unknown, _self: unknown, ...args: unknown[]) => fn.call(args),
+    },
+    toBuffer: (addr: number) => {
+      if (addr !== nameAddr) throw new Error(`unexpected toBuffer(${addr})`)
+      return Buffer.from(`${world.path}\0`, 'utf16le').buffer
     },
   }))
 }
@@ -155,8 +192,18 @@ async function loadBindingsModule(): Promise<typeof import('../src/win32-dialog-
   return await import('../src/win32-dialog-bindings.ts')
 }
 
+// The bindings gate `import('bun:ffi')` on a Bun runtime (process.versions.bun);
+// the fake module then stands in for the real one, so the guard sees a Bun.
+const originalBunVersion = process.versions.bun
+beforeAll(() => {
+  ;(process.versions as Record<string, string | undefined>).bun = '1.3.14'
+})
+afterAll(() => {
+  ;(process.versions as Record<string, string | undefined>).bun = originalBunVersion
+})
+
 afterEach(() => {
-  vi.doUnmock('koffi')
+  vi.doUnmock('bun:ffi')
   vi.doUnmock('node:worker_threads')
   vi.doUnmock('../src/win32-dialog-bindings.ts')
   vi.resetModules()
@@ -165,16 +212,16 @@ afterEach(() => {
 describe('loadWin32DialogBindings over the fake COM world', () => {
   it('drives the full selection conversation with memory hygiene', async () => {
     const world = comWorld()
-    installFakeKoffi(world)
+    installFakeBunFfi(world)
     const { loadWin32DialogBindings } = await loadBindingsModule()
     const bindings = await loadWin32DialogBindings()
-    const showing = vi.fn()
 
-    expect(runFolderDialog(bindings, '选择工作区目录', showing)).toBe('C:\\选中\\directory')
+    expect(runFolderDialog(bindings, '选择工作区目录')).toBe('C:\\选中\\directory')
     expect(world.dpiContexts).toEqual([-4])
     expect(world.titles).toEqual(['选择工作区目录'])
     expect(world.options).toHaveLength(1)
-    expect(showing).toHaveBeenCalledWith(31337)
+    expect(world.cfas.length).toBeGreaterThan(0)
+    expect(world.cfas.every(cfa => cfa === 'stdcall')).toBe(true)
     expect(world.freed).toHaveLength(1)
     expect(world.released).toEqual(['item', 'dialog'])
     expect(world.uninitialized).toBe(1)
@@ -182,85 +229,91 @@ describe('loadWin32DialogBindings over the fake COM world', () => {
 
   it('maps dismissal and the S_FALSE CoInitializeEx', async () => {
     const world = comWorld({ showHr: HRESULT_CANCELLED, coInitHr: 1 })
-    installFakeKoffi(world)
+    installFakeBunFfi(world)
     const { loadWin32DialogBindings } = await loadBindingsModule()
     const bindings = await loadWin32DialogBindings()
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBeNull()
+    expect(runFolderDialog(bindings, 'Pick')).toBeNull()
     expect(world.released).toEqual(['dialog'])
     expect(world.uninitialized).toBe(1)
   })
 
   it('cascades DPI contexts to the first the host accepts', async () => {
     const world = comWorld({ supportedDpiContexts: [-3] })
-    installFakeKoffi(world)
+    installFakeBunFfi(world)
     const bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\选中\\directory')
+    expect(runFolderDialog(bindings, 'Pick')).toBe('C:\\选中\\directory')
     expect(world.dpiContexts).toEqual([-4, -3])
   })
 
   it('keeps the tier when no DPI context is accepted or the symbol is absent', async () => {
     // DPI is a cosmetic best-effort: the modern dialog still opens.
     const rejecting = comWorld({ supportedDpiContexts: [] })
-    installFakeKoffi(rejecting)
+    installFakeBunFfi(rejecting)
     let bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\选中\\directory')
+    expect(runFolderDialog(bindings, 'Pick')).toBe('C:\\选中\\directory')
     expect(rejecting.dpiContexts).toEqual([-4, -3, -2])
 
-    vi.doUnmock('koffi')
+    vi.doUnmock('bun:ffi')
     vi.resetModules()
     const preThreadDpi = comWorld({ hasThreadDpi: false })
-    installFakeKoffi(preThreadDpi)
+    installFakeBunFfi(preThreadDpi)
     bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\选中\\directory')
+    expect(runFolderDialog(bindings, 'Pick')).toBe('C:\\选中\\directory')
     expect(preThreadDpi.dpiContexts).toEqual([])
+  })
+
+  it('refuses to load on a non-Bun runtime', async () => {
+    ;(process.versions as Record<string, string | undefined>).bun = undefined
+    try {
+      const { loadWin32DialogBindings } = await loadBindingsModule()
+      await expect(loadWin32DialogBindings()).rejects.toThrow('requires the Bun runtime')
+    } finally {
+      ;(process.versions as Record<string, string | undefined>).bun = '1.3.14'
+    }
   })
 
   it('surfaces creation and extraction failures as HRESULT errors', async () => {
     const creationWorld = comWorld({ coCreateHr: E_FAIL })
-    installFakeKoffi(creationWorld)
+    installFakeBunFfi(creationWorld)
     let bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
     expect(() => bindings.createFolderDialog()).toThrow('CoCreateInstance(FileOpenDialog) failed: HRESULT 0x80004005')
 
-    vi.doUnmock('koffi')
+    vi.doUnmock('bun:ffi')
     vi.resetModules()
     const resultWorld = comWorld({ getResultHr: E_FAIL })
-    installFakeKoffi(resultWorld)
+    installFakeBunFfi(resultWorld)
     bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
-    expect(() => runFolderDialog(bindings, 'Pick', vi.fn())).toThrow('GetResult failed')
+    expect(() => runFolderDialog(bindings, 'Pick')).toThrow('GetResult failed')
     expect(resultWorld.released).toEqual(['dialog'])
 
-    vi.doUnmock('koffi')
+    vi.doUnmock('bun:ffi')
     vi.resetModules()
     const nameWorld = comWorld({ getDisplayNameHr: E_FAIL })
-    installFakeKoffi(nameWorld)
+    installFakeBunFfi(nameWorld)
     bindings = await (await loadBindingsModule()).loadWin32DialogBindings()
-    expect(() => runFolderDialog(bindings, 'Pick', vi.fn())).toThrow('GetResult failed')
+    expect(() => runFolderDialog(bindings, 'Pick')).toThrow('GetResult failed')
     // The shell item is released even when its display name cannot be read.
     expect(nameWorld.released).toEqual(['item', 'dialog'])
     expect(nameWorld.freed).toHaveLength(0)
   })
 })
 
-describe('closeThreadWindows over the fake COM world', () => {
-  it('posts WM_CLOSE to every window of the thread and unregisters the callback', async () => {
-    const world = comWorld()
-    installFakeKoffi(world)
-    const { closeThreadWindows } = await loadBindingsModule()
-    await closeThreadWindows(777)
-    expect(world.posted).toEqual([
-      { hwnd: { kind: 'hwnd', n: 1 }, message: WM_CLOSE },
-      { hwnd: { kind: 'hwnd', n: 2 }, message: WM_CLOSE },
-    ])
-    expect(world.registered).toBe(1)
-    expect(world.unregistered).toBe(1)
+describe('closeDialogWindow over the fake COM world', () => {
+  it('posts WM_CLOSE to the window whose caption matches the title', async () => {
+    const world = comWorld({ windowHwnd: { kind: 'hwnd', n: 1 } })
+    installFakeBunFfi(world)
+    const { closeDialogWindow } = await loadBindingsModule()
+    await closeDialogWindow('Select Workspace Directory')
+    expect(world.searchedTitles).toEqual(['Select Workspace Directory'])
+    expect(world.posted).toEqual([{ hwnd: { kind: 'hwnd', n: 1 }, message: WM_CLOSE }])
   })
 
-  it('unregisters the callback even when the enumeration itself throws', async () => {
-    const world = comWorld({ enumThrows: true })
-    installFakeKoffi(world)
-    const { closeThreadWindows } = await loadBindingsModule()
-    await expect(closeThreadWindows(777)).rejects.toThrow('EnumThreadWindows refused')
-    expect(world.unregistered).toBe(1)
+  it('posts nothing when no window has the caption', async () => {
+    const world = comWorld()
+    installFakeBunFfi(world)
+    const { closeDialogWindow } = await loadBindingsModule()
+    await closeDialogWindow('Select Workspace Directory')
+    expect(world.posted).toEqual([])
   })
 })
 
@@ -291,14 +344,13 @@ describe('the worker entry over a mocked process boundary', () => {
     vi.resetModules()
   })
 
-  it('posts showing then done for a completed conversation', async () => {
+  it('posts done for a completed conversation', async () => {
     const { posted } = installBoundary()
     vi.doMock('../src/win32-dialog-bindings.ts', () => ({
       loadWin32DialogBindings: async () => ({
         setThreadDpiAwareness: () => undefined,
         coInitializeSta: () => 0,
         coUninitialize: () => undefined,
-        currentThreadId: () => 11,
         createFolderDialog: () => ({
           setOptions: () => 0,
           setTitle: () => 0,
@@ -310,7 +362,6 @@ describe('the worker entry over a mocked process boundary', () => {
     }))
     await import('../src/win32-dialog-worker.ts')
     expect(posted).toEqual([
-      { kind: 'showing', threadId: 11 },
       { kind: 'done', path: 'C:\\from-worker' },
     ])
   })

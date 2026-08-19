@@ -1,10 +1,11 @@
 /**
  * Keyless built-artifact guard (the `dsh-workflow-worker-thread` built-worker
- * shape): plain `node` runs `lib/worker.cjs` and the bundle reaches its
- * real koffi requires. POSIX hosts prove the load path end to end through
- * the deterministic ole32 rejection; win32 skips (a real dialog would
- * open), where the win32-only smoke in win32-dialog.spec.ts covers the
- * source plane instead. Skips until a build produces the artifact.
+ * shape): plain `node` runs `lib/worker.cjs` and the bundle reaches its real
+ * `bun:ffi` dependency. On a Node host the worker refuses the non-Bun runtime
+ * before any FFI load; on a Bun host `dlopen` cannot find ole32.dll on POSIX.
+ * win32 skips (a real dialog would open), where the win32-only smoke in
+ * win32-dialog.spec.ts covers the source plane instead. Skips until a build
+ * produces the artifact.
  */
 
 import { spawn } from 'node:child_process'
@@ -29,6 +30,6 @@ describe.skipIf(!existsSync(builtWorker) || process.platform === 'win32')('built
       })
     })
     expect(message.kind).toBe('error')
-    expect((message as { kind: 'error'; message: string }).message).toMatch(/ole32|koffi/i)
+    expect((message as { kind: 'error'; message: string }).message).toMatch(/ole32|requires the Bun runtime/i)
   }, 30_000)
 })

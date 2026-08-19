@@ -3,9 +3,7 @@
  * inside the modal `Show` so the host event loop stays live, reporting over
  * the IPC channel. Spawned as a child process (not a worker thread) so the
  * dialog is the process's first window and Windows activates it without a
- * manual foreground call. Protocol: `{kind:'showing',threadId}` right
- * before the blocking call (the driver's abort lever needs the native
- * thread id), then exactly one of `{kind:'done',path}` or
+ * manual foreground call. Protocol: exactly one of `{kind:'done',path}` or
  * `{kind:'error',message}`.
  */
 
@@ -15,9 +13,8 @@ import { runFolderDialog } from './win32-dialog-logic.ts'
 /** The driver-to-child payload: the dialog title (passed via env). */
 export interface Win32DialogWorkerData { title: string }
 
-/** One notice or outcome posted back to the driver. */
+/** One outcome posted back to the driver. */
 export type Win32DialogWorkerMessage =
-  | { kind: 'showing'; threadId: number }
   | { kind: 'done'; path: string | null }
   | { kind: 'error'; message: string }
 
@@ -41,9 +38,7 @@ process.on('disconnect', () => process.exit(0))
 void (async () => {
   try {
     const bindings = await loadWin32DialogBindings()
-    const path = runFolderDialog(bindings, title, (threadId) => {
-      post({ kind: 'showing', threadId } satisfies Win32DialogWorkerMessage)
-    })
+    const path = runFolderDialog(bindings, title)
     post({ kind: 'done', path } satisfies Win32DialogWorkerMessage)
   } catch (error: unknown) {
     const message = error instanceof Error ? (error.stack ?? error.message) : String(error)

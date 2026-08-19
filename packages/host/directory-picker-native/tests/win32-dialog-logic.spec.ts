@@ -43,7 +43,6 @@ function world(overrides: Partial<Win32FolderDialog> = {}, coInit = 0): FakeWorl
     coInitializeSta: vi.fn(() => coInit),
     coUninitialize: uninitialize,
     createFolderDialog: createDialog,
-    currentThreadId: vi.fn(() => 4242),
   }
   return { bindings, dpi, createDialog, uninitialize, dialog: dialog as FakeWorld['dialog'] }
 }
@@ -51,21 +50,18 @@ function world(overrides: Partial<Win32FolderDialog> = {}, coInit = 0): FakeWorl
 describe('runFolderDialog', () => {
   it('sequences DPI, STA, options, title, show, result extraction, and apartment teardown', () => {
     const { bindings, dpi, dialog, uninitialize } = world()
-    const showing = vi.fn()
-    expect(runFolderDialog(bindings, 'Pick', showing)).toBe('C:\\picked\\目录')
+    expect(runFolderDialog(bindings, 'Pick')).toBe('C:\\picked\\目录')
     expect(dpi).toHaveBeenCalledOnce()
     expect(uninitialize).toHaveBeenCalledOnce()
     expect(dialog.release.mock.invocationCallOrder[0]).toBeLessThan(uninitialize.mock.invocationCallOrder[0] as number)
     expect(dialog.setOptions).toHaveBeenCalledWith(FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM | FOS_NOCHANGEDIR)
     expect(dialog.setTitle).toHaveBeenCalledWith('Pick')
-    expect(showing).toHaveBeenCalledWith(4242)
-    expect(showing.mock.invocationCallOrder[0]).toBeLessThan(dialog.show.mock.invocationCallOrder[0] as number)
     expect(dialog.release).toHaveBeenCalledOnce()
   })
 
   it('maps the cancelled HRESULT to null and still releases the dialog and apartment', () => {
     const { bindings, dialog, uninitialize } = world({ show: vi.fn(() => HRESULT_CANCELLED) })
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBeNull()
+    expect(runFolderDialog(bindings, 'Pick')).toBeNull()
     expect(dialog.resultPath).not.toHaveBeenCalled()
     expect(dialog.release).toHaveBeenCalledOnce()
     expect(uninitialize).toHaveBeenCalledOnce()
@@ -73,12 +69,12 @@ describe('runFolderDialog', () => {
 
   it('accepts the S_FALSE re-entry HRESULT from CoInitializeEx', () => {
     const { bindings } = world({}, 1)
-    expect(runFolderDialog(bindings, 'Pick', vi.fn())).toBe('C:\\picked\\目录')
+    expect(runFolderDialog(bindings, 'Pick')).toBe('C:\\picked\\目录')
   })
 
   it('throws on a failing CoInitializeEx without creating a dialog or uninitializing', () => {
     const { bindings, createDialog, uninitialize } = world({}, E_FAIL)
-    expect(() => runFolderDialog(bindings, 'Pick', vi.fn())).toThrow('CoInitializeEx failed: HRESULT 0x80004005')
+    expect(() => runFolderDialog(bindings, 'Pick')).toThrow('CoInitializeEx failed: HRESULT 0x80004005')
     expect(createDialog).not.toHaveBeenCalled()
     // A failed CoInitializeEx must NOT be paired with CoUninitialize.
     expect(uninitialize).not.toHaveBeenCalled()
@@ -91,7 +87,7 @@ describe('runFolderDialog', () => {
     ['GetResult', { resultPath: vi.fn(() => ({ hr: E_FAIL })) }],
   ] satisfies [string, Partial<Win32FolderDialog>][])('releases the dialog and apartment when %s fails', (what, overrides) => {
     const { bindings, dialog, uninitialize } = world(overrides)
-    expect(() => runFolderDialog(bindings, 'Pick', vi.fn())).toThrow(`${what} failed: HRESULT 0x80004005`)
+    expect(() => runFolderDialog(bindings, 'Pick')).toThrow(`${what} failed: HRESULT 0x80004005`)
     expect(dialog.release).toHaveBeenCalledOnce()
     expect(uninitialize).toHaveBeenCalledOnce()
   })
