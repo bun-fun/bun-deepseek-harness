@@ -8,6 +8,11 @@
  * and publish it with `MoveFileExW(..., MOVEFILE_WRITE_THROUGH)` without
  * replacement or cross-volume copy fallback.
  *
+ * The two Win32 entry points are bound through the active runtime's FFI:
+ * `bun:ffi` on a Bun host, Koffi on a Node host. Koffi is a Node addon that
+ * Bun 1.3.x cannot host safely on Windows (its N-API finalizers panic under
+ * Bun's runtime), so the Bun path dlopens kernel32 through `bun:ffi` instead.
+ *
  * @module dsh-session-persistence-jsonl/win32
  */
 
@@ -38,15 +43,40 @@ const ERROR_ALREADY_EXISTS = 183
 
 let bindings: Win32Bindings | undefined
 
-/** Load the small Win32 API lazily so non-Windows processes never load Koffi. */
-async function win32(): Promise<Win32Bindings> {
-  if (bindings !== undefined) return bindings
+/** Bind the two entry points through Koffi, the Node host's FFI. */
+async function koffiBindings(): Promise<Win32Bindings> {
   const koffi = (await import('koffi')).default
   const kernel32 = koffi.load('kernel32.dll')
-  bindings = {
+  return {
     moveFileExW: kernel32.func('__stdcall', 'MoveFileExW', 'int', ['str16', 'str16', 'uint']) as MoveFileExW,
     getLastError: kernel32.func('__stdcall', 'GetLastError', 'uint', []) as GetLastError,
   }
+}
+
+/** Bind the two entry points through `bun:ffi`, the Bun host's FFI. */
+async function bunFfiBindings(): Promise<Win32Bindings> {
+  const { dlopen, ptr } = await import('bun:ffi')
+  const kernel32 = dlopen('kernel32.dll', {
+    MoveFileExW: { args: ['ptr', 'ptr', 'u32'], returns: 'i32' },
+    GetLastError: { args: [], returns: 'u32' },
+  }).symbols
+  const moveFileExWNative = kernel32.MoveFileExW as (existing: unknown, replacement: unknown, flags: number) => number
+  const getLastError = kernel32.GetLastError as () => number
+  return {
+    moveFileExW: (existing, replacement, flags) => {
+      const from = Buffer.from(`${existing}\0`, 'utf16le')
+      const to = Buffer.from(`${replacement}\0`, 'utf16le')
+      return moveFileExWNative(ptr(from), ptr(to), flags)
+    },
+    getLastError,
+  }
+}
+
+/** Load the small Win32 API lazily so non-Windows processes never load an FFI binding. */
+async function win32(): Promise<Win32Bindings> {
+  if (bindings !== undefined) return bindings
+  const loader = process.versions.bun === undefined ? koffiBindings : bunFfiBindings
+  bindings = await loader()
   return bindings
 }
 

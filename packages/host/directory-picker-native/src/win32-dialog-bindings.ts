@@ -43,6 +43,15 @@ interface BunFfi {
 const POINTER_SIZE = process.arch === 'ia32' ? 4 : 8
 
 /**
+ * Every `CFunction` this module constructs, held for the process lifetime.
+ * Bun 1.3.x on Windows crashes in GC when it finalizes bun:ffi `CFunction`
+ * objects (the same N-API finalizer fault that sinks koffi.node), so the
+ * worker keeps them referenced instead of letting the collector reclaim them
+ * mid-run or during teardown.
+ */
+const liveCallbacks: unknown[] = []
+
+/**
  * Read a NUL-terminated UTF-16 string at a native address. The COM
  * `_Out_ LPWSTR` surface hands back a raw address; `toBuffer` views the
  * memory directly instead of asking FFI to dereference it.
@@ -104,7 +113,9 @@ export async function loadWin32DialogBindings(): Promise<Win32DialogBindings> {
   const method = (self: number, slot: number, args: string[], returns: string): FfiSymbol => {
     const vtable = ffi.read.ptr(self)
     const fn = ffi.read.ptr(vtable + slot * POINTER_SIZE)
-    return new ffi.CFunction({ ptr: fn, args: ['ptr', ...args], returns, cfa: 'stdcall' })
+    const callable = new ffi.CFunction({ ptr: fn, args: ['ptr', ...args], returns, cfa: 'stdcall' })
+    liveCallbacks.push(callable)
+    return callable
   }
 
   return {

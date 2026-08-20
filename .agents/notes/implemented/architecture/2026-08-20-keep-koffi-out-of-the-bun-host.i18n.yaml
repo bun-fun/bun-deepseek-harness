@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-20-keep-koffi-out-of-the-bun-host.md
+2026-08-20-keep-koffi-out-of-the-bun-host.md: a3e0d4938058ff2f786ba46f61c7ee9d59fc6116
+2026-08-20-keep-koffi-out-of-the-bun-host.zh.md: 5fd4772795f38adb81b56f0c891efd6330cbde40

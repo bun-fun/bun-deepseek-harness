@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "0836142cc531bbe28312b801d96d2e1a01aa6174",
+    "indexed_at": "2026-08-20T14:24:39Z",
+    "project": "E-AiCode-bun-deepseek-harness",
+    "nodes": 60566,
+    "edges": 140850,
+    "original_size": 132513792,
+    "compressed_size": 22764304,
+    "compression_level": 3
+}

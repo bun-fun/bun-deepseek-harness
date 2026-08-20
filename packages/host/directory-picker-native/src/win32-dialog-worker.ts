@@ -25,9 +25,15 @@ if (process.send === undefined) throw new Error('win32-dialog-worker must run as
 const send = process.send.bind(process)
 
 const post = (message: Win32DialogWorkerMessage): void => {
-  // Flush before closing the channel; the process exits when the loop drains.
-  /* v8 ignore next 3 -- disconnect needs a live IPC channel the unit lane must not sever (built-worker.e2e.ts owns the real close path). */
-  send(message, () => { if (process.connected) process.disconnect() })
+  // Flush before closing the channel, then exit hard: Bun 1.3.x on Windows
+  // crashes in GC when it finalizes bun:ffi CFunction objects during natural
+  // teardown, so the worker skips the teardown pass once the outcome is on the
+  // wire. The parent sees the message before this callback runs.
+  /* v8 ignore next 4 -- disconnect needs a live IPC channel the unit lane must not sever; built-worker.e2e.ts owns the real close path. */
+  send(message, () => {
+    if (process.connected) process.disconnect()
+    process.exit(0)
+  })
 }
 
 // A settled driver (or a dead parent) must not orphan a dialog still on screen.
