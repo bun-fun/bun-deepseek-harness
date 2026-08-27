@@ -1,6 +1,6 @@
 /** Shared remote-environment scrubbing for E2B process and terminal launchers. */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import { posix } from 'node:path'
 import { e2bControlEnvs } from '@deepseek-ai/dsh-e2b'
 import type { Sandbox } from '@deepseek-ai/dsh-e2b'

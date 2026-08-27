@@ -18,7 +18,6 @@
 
 import { cp, mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { existsSync, realpathSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, delimiter } from 'node:path'
 import { vi } from 'vitest'
@@ -30,6 +29,8 @@ import {
   type SessionNotification,
 } from '@agentclientprotocol/sdk'
 import { launchAcpTestAgent, type AgentUnderTest, type LaunchedAcpTestAgent } from './launcher.ts'
+
+import { createHash } from 'node:crypto'
 
 export type { AgentUnderTest } from './launcher.ts'
 

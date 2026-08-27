@@ -3,8 +3,6 @@
  * shared sandbox and retains command output/status paths in that remote world.
  * @module @deepseek-ai/dsh-subprocess-e2b
  */
-
-import { randomUUID } from 'node:crypto'
 import { posix } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -20,6 +18,8 @@ import { e2bControlEnvs, quoteE2BShellArg } from '@deepseek-ai/dsh-e2b'
 import { E2BSubprocessHandle } from './process.ts'
 import { asError, signalOpts } from './remote.ts'
 import { spawnE2BTerminal } from './terminal.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Configuration for the E2B subprocess adapter. */
 export interface Config {

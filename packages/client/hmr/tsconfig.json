@@ -8,7 +8,7 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": ["node"]
+    "types": ["node", "bun-crypto-globals"]
   },
   "include": [
     "src"

@@ -6,7 +6,6 @@
  */
 
 import { Context, FiberState, Service } from '@deepseek-ai/cordis'
-import { randomUUID } from 'node:crypto'
 import z from '@deepseek-ai/schemastery'
 import { emitAgentEvent } from '@deepseek-ai/dsh-agent'
 import type {
@@ -28,6 +27,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import { ReactLoopAgent } from './agent.ts'
 import { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from './constants.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Fiber states that cannot own or serve a new lifecycle. */
 const INACTIVE_STATES: ReadonlySet<FiberState> = new Set([

@@ -10,6 +10,7 @@
  *   element: path geometry is print noise, but the fingerprint still flips
  *   when an icon's artwork actually changes.
  */
+
 import { expect } from 'vitest'
 import type { SnapshotSerializer } from 'vitest'
 

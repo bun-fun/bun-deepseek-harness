@@ -7,10 +7,10 @@
  *
  * @module dsh-session-persistence-sqlite/schema
  */
-
-import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import type { SessionEvent, SessionId, SessionHeader, SurfaceOp } from '@deepseek-ai/dsh-session'
+
+import { randomUUID } from 'node:crypto'
 
 /**
  * The on-disk schema version. Bumped only on a breaking change to the table

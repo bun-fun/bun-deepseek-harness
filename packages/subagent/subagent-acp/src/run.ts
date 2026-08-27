@@ -7,8 +7,6 @@
  * with-key coverage drives the real ACP example.
  * @module @deepseek-ai/dsh-subagent-acp/run
  */
-
-import { randomUUID } from 'node:crypto'
 import { Readable as NodeReadable, Writable as NodeWritable } from 'node:stream'
 import {
   ClientSideConnection,
@@ -27,6 +25,8 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import { AssistantOutputFold } from '@deepseek-ai/dsh-subagent'
 import type { SubagentResult, SubagentRun, SubagentStartRequest, SubagentStopReason } from '@deepseek-ai/dsh-subagent'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
+
+import { randomUUID } from 'node:crypto'
 
 /** Fixed response to child permission requests: reject by default, or select the first allow option. */
 export type PermissionPolicy = 'allow' | 'reject'

@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "lib/types",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
-    "types": ["node"]
+    "types": ["node", "bun-crypto-globals"]
   },
   "include": ["src"],
   "references": [

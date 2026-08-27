@@ -3,10 +3,7 @@
  * files are the stored artifacts verbatim (root + optional descendants), and
  * the degenerate compositions fail loudly (missing services → 500, missing
  * root → 404, missing descendant → errored stream).
- */
-
-import { randomBytes } from 'node:crypto'
-import { describe, expect, it, vi } from 'vitest'
+ */import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { unzipSync, strFromU8 } from 'fflate'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
@@ -15,6 +12,8 @@ import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionLineageNode } from '@deepseek-ai/dsh-session-query'
 import type { SessionRawArtifact } from '@deepseek-ai/dsh-session-persistence'
 import ApiProxyService, { createApiProxy, toFetchHandler } from '@deepseek-ai/dsh-host-apiproxy'
+
+import { randomBytes } from 'node:crypto'
 
 const sid = (id: string): SessionId => id as SessionId
 

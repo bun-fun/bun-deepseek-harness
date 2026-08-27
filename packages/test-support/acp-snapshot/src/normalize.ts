@@ -1,3 +1,4 @@
+
 /**
  * Pure ACP transcript and session-log normalizers. They scrub session ids, run cwd, RPC ids,
  * timestamps, and hook duration while preserving deterministic event sequence numbers.

@@ -4,7 +4,7 @@
  * @module @deepseek-ai/dsh-typert-generator/emitter
  */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import { posix } from 'node:path'
 import { GenMapping, addMapping, toEncodedMap } from '@jridgewell/gen-mapping'
 import type {

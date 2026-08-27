@@ -16,7 +16,6 @@
  * @module @deepseek-ai/dsh-anonymous-user-id
  */
 
-import { randomUUID } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { Branded } from '@deepseek-ai/dsh-brand'

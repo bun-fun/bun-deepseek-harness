@@ -5,6 +5,7 @@
  * pinned vendored sources; a registry copy of the same name coexisting with
  * the vendored one silently forks the framework layer (vendor/README.md).
  */
+
 import { readdir, readFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import * as yaml from 'js-yaml'

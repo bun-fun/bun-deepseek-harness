@@ -10,7 +10,6 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { randomUUID } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { Readable, Writable } from 'node:stream'
 import Schema from '@deepseek-ai/schemastery'
@@ -38,6 +37,8 @@ import { SessionId, type SessionEvent, type TurnEndReason } from '@deepseek-ai/d
 // Side-effect type import: declaration-merges the approval waterfall answered below.
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { acpPromptToText, promptHasUnsupportedContent, turnEndToStopReason } from './codec.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export const name = 'acp'
 /** The bridge creates and owns agents; every other concern is carried by the agent composition. */

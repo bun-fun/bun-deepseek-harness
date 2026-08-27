@@ -1,6 +1,6 @@
 /** Persistent PTY session over the subprocess seam's terminal primitive. */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import type {
   SubprocessOutcome,
   SubprocessTerminalForeground,

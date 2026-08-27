@@ -5,8 +5,6 @@
  * (404 unknown path / 415 non-JSON media type / 400 non-JSON body / 500 handler crash);
  * business errors are always 200 + ServerResponse.
  */
-
-import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
 import type { ApiProxy, MuxFrame, HostFrame } from '../api/index.ts'
 import { sessionLogQuerySchema } from '../api/downloads.schema.ts'
@@ -70,6 +68,8 @@ import {
   subagentListRequestSchema,
   subagentPromptRequestSchema,
 } from '../api/subagents.schema.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /**
  * Unary dispatch table, keyed by (and compiler-locked to) RpcMethodMap: a map row without a

@@ -9,7 +9,6 @@
 
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import type { Readable } from 'node:stream'
-import { randomBytes } from 'node:crypto'
 import { closeSync, mkdtempSync, openSync, unlinkSync, writeSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -25,6 +24,8 @@ import type {
   SubprocessSpawnSpec,
 } from '@deepseek-ai/dsh-subprocess'
 import { linuxProcessGroupHasLiveMembers } from './process-inspector.ts'
+
+import { randomBytes } from 'node:crypto'
 
 /**
  * Build a child environment: explicit caller entries override the scrubbed

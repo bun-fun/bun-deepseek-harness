@@ -1,4 +1,5 @@
 /** Session/workspace fixture shapes and snapshot defaults for the test runtime. */
+
 import type {
   ConversationSnapshot, ISession, SessionId, SessionSummary, WorkspaceListState,
 } from '@deepseek-ai/dsh-client-runtime/client'

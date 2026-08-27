@@ -1,4 +1,5 @@
 /** Test-owned workspaces face: the renderer standard-kit observable plus recorded actions. */
+
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
   DirectoryListing, IWorkspaces, SessionId, SnapshotStore, WorkspaceId, WorkspaceListState, WorkspaceView,

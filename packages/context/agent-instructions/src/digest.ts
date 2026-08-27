@@ -1,11 +1,10 @@
+
+import { createHash } from 'node:crypto'
 /**
  * Content identity for workspace instruction duplicate suppression.
  *
  * @module @deepseek-ai/dsh-agent-instructions/digest
  */
-
-import { createHash } from 'node:crypto'
-
 /**
  * Compute the content identity used across instruction loading and session state.
  * @param content - exact UTF-8 instruction text.

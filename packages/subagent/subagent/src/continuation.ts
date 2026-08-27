@@ -18,10 +18,9 @@
  * disposed by then, and the release that wakes the parent's own settlement
  * watcher has already run. See {@link SubagentContinuationManager.notifySettlement}.
  *
- * @module @deepseek-ai/dsh-subagent
+ * @module @deepseek-ai/dsh-subagent/continuation
  */
 
-import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import type {
   Agent,
@@ -53,6 +52,8 @@ import type { ContinuableCreateRequest, ContinuableCreateSpec, SubagentResult, S
 import type { ActivationObserver, ActivationTerminal } from './lifecycle.ts'
 import { SubagentError } from './error.ts'
 import type SubagentActivationSetupRegistry from './activation-setup-registry.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Attribution for a model coordinator's follow-up to one of its children. */
 export interface CoordinatorMessageSource {

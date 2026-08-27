@@ -8,7 +8,6 @@
 
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import { randomUUID } from 'node:crypto'
 import { statSync } from 'node:fs'
 import type { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { mkdir, open } from 'node:fs/promises'
@@ -24,6 +23,8 @@ import type { SessionEvent, SurfaceEventType, SessionId, SessionHeader, SessionP
 import {
   type JournalMode, openDatabase, rowToMeta, scanRows, type EventRow, type SessionRow,
 } from './schema.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export { SCHEMA_VERSION } from './schema.ts'
 

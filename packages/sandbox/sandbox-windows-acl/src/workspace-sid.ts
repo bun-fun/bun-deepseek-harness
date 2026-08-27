@@ -1,3 +1,5 @@
+
+import { createHash } from 'node:crypto'
 /**
  * The per-workspace write identity: a deterministic `S-1-4-x-y` SID derived
  * from the canonical workspace path, whose ACEs form that workspace's write
@@ -23,9 +25,6 @@
  * once.
  * @module @deepseek-ai/dsh-sandbox-windows-acl/workspace-sid
  */
-
-import { createHash } from 'node:crypto'
-
 /**
  * Derive the workspace's write SID (`S-1-4-x-y`; subauthorities 30-bit,
  * matching the workspace-capability shape the token and ACE layers carry).

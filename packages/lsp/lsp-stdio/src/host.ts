@@ -1,6 +1,6 @@
 /** Filesystem-seam source access for the generic stdio LSP provider. */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import type { FileSystem, FsTarget } from '@deepseek-ai/dsh-fs'
 import { throwIfAborted } from './abort.ts'
 

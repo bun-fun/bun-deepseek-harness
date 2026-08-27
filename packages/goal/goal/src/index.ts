@@ -3,8 +3,6 @@
  * and process-local continuation activation.
  * @module @deepseek-ai/dsh-goal
  */
-
-import { randomUUID } from 'node:crypto'
 import { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { z as zod } from 'zod'
@@ -46,6 +44,8 @@ import type {
   GoalOperation,
   GoalSnapshotChangeMeta,
 } from './domain.ts'
+
+import { randomUUID } from 'node:crypto'
 
 // The pure payload outlet (./types.ts, ONE home of the `goal` projection-key
 // declaration) re-exported onto the package root keeps the module edge in

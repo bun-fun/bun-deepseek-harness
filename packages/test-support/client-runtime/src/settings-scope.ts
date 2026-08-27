@@ -1,4 +1,5 @@
 /** Test double for the client settings-scope seam. */
+
 import { vi } from 'vitest'
 import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 

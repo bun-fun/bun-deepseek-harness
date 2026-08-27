@@ -3,12 +3,12 @@
  * handle, so filesystem and process operations inhabit one remote Linux world.
  * @module @deepseek-ai/dsh-e2b
  */
-
-import { randomUUID } from 'node:crypto'
 import { posix } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { FileType, Sandbox, SandboxNotFoundError } from 'e2b'
+
+import { randomUUID } from 'node:crypto'
 
 export {
   CommandExitError,

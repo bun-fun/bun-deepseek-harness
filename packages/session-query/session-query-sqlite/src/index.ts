@@ -3,8 +3,6 @@
  *
  * @module @deepseek-ai/dsh-session-query-sqlite
  */
-
-import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from '@deepseek-ai/dsh-sqlite-runtime'
 import { Context, Service, type Fiber } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -55,6 +53,8 @@ import {
   sanitizeFtsText,
   SQLITE_MAX_PAGE_LIMIT,
 } from './query.ts'
+
+import { randomUUID, createHash } from 'node:crypto'
 
 export {
   SESSION_QUERY_SQLITE_APPLICATION_ID,

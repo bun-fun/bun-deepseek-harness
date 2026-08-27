@@ -10,14 +10,14 @@
  *
  * @module @deepseek-ai/dsh-subagent-dsh-sdk/run
  */
-
-import { randomUUID } from 'node:crypto'
 import { DeepSeekHarness, type HarnessNotification } from '@deepseek-ai/dsh-sdk-client'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { SessionId, type SessionEvent, type TurnEndReason } from '@deepseek-ai/dsh-session'
 import type { SubagentResult, SubagentRun, SubagentStartRequest, SubagentStopReason } from '@deepseek-ai/dsh-subagent'
 import { AssistantOutputFold, settleRunResult, subprocessRunHandle } from '@deepseek-ai/dsh-subagent'
 import { scrubbedParentEnv } from '@deepseek-ai/dsh-subprocess'
+
+import { randomUUID } from 'node:crypto'
 
 /** Resolved spawn spec for an SDK runtime child process (no defaults — see Config). */
 export interface SdkRunSpec {

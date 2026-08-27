@@ -7,7 +7,7 @@
 
 import {
   constants, zstdCompress, zstdDecompress, type ZstdOptions,
-} from 'node:zlib'
+} from 'zlib'
 import { promisify } from 'node:util'
 import { NodePrivateZstdFrameDecoder } from './zstd-private-decoder.ts'
 import { PublicZstdFrameDecoder } from './zstd-public-decoder.ts'

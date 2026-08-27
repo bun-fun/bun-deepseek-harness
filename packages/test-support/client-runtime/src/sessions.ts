@@ -1,4 +1,5 @@
 /** Test-owned sessions face: the SlotRegistry host contract over declarative fixtures. */
+
 import type { Context } from '@deepseek-ai/cordis'
 import type { AttachmentIdType } from '@deepseek-ai/dsh-attachment'
 import { createScope, scopeOf, SessionProvideChannel } from '@deepseek-ai/dsh-client-runtime/client'

@@ -2,8 +2,6 @@
  * Host-side ApiProxy implementation. Signature discipline: unary takes the
  * narrow RpcRequest<P> and echoes request.rpcId on the RpcResponse<T>.
  */
-
-import { randomUUID } from 'node:crypto'
 import { mkdir, stat } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
@@ -109,6 +107,8 @@ import {
   inspectApiRemoteSession,
 } from '@deepseek-ai/dsh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Page size when history is called without maxMessages. */
 const DEFAULT_MAX_MESSAGES = 50

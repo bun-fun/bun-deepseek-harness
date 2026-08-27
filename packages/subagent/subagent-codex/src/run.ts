@@ -6,8 +6,6 @@
  *
  * @module @deepseek-ai/dsh-subagent-codex/run
  */
-
-import { randomUUID } from 'node:crypto'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import {
@@ -20,6 +18,8 @@ import {
 } from '@deepseek-ai/dsh-subagent'
 import type { SubprocessHandle, SubprocessSpawnSpec } from '@deepseek-ai/dsh-subprocess'
 import { CodexAppServerWire } from './wire.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000

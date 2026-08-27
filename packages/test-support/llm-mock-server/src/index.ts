@@ -8,9 +8,10 @@
 
 import { createServer } from 'node:http'
 import type { IncomingHttpHeaders, IncomingMessage, ServerResponse } from 'node:http'
-import { randomBytes } from 'node:crypto'
 import { isIP, type AddressInfo } from 'node:net'
 import { setTimeout as delay } from 'node:timers/promises'
+
+import { randomBytes } from 'node:crypto'
 
 /** Request-scoped behaviors accepted by {@link startMockLlmServer}. */
 export const MOCK_LLM_BEHAVIORS = [

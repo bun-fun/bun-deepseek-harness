@@ -9,10 +9,10 @@
  * replaced; readers stay lock-free because the rename commit is atomic.
  * @module @deepseek-ai/dsh-atomic-write
  */
-
-import { randomBytes } from 'node:crypto'
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
+
+import { randomBytes } from 'node:crypto'
 
 /**
  * Filesystem options for {@link writeFileAtomic}; `mode` is required so the

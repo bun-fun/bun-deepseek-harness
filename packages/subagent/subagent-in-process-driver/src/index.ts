@@ -10,8 +10,6 @@
  *
  * @module @deepseek-ai/dsh-subagent-in-process-driver
  */
-
-import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import { foldConsumedWork } from '@deepseek-ai/dsh-agent'
 import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
@@ -38,6 +36,8 @@ import {
   attachStructuredRuntime,
   type StructuredAttachment,
 } from './structured.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export {
   STRUCTURED_OUTPUT_TOOL,

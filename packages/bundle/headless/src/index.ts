@@ -6,8 +6,6 @@
  *
  * @module @deepseek-ai/dsh-headless
  */
-
-import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
@@ -20,6 +18,8 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 // and the cmdline Context merge for the appExit host value.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
+
+import { randomUUID } from 'node:crypto'
 
 /** Stable Cordis plugin name. */
 export const name = 'headless-runner'

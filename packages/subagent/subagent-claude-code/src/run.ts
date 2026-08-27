@@ -5,8 +5,6 @@
  *
  * @module @deepseek-ai/dsh-subagent-claude-code/run
  */
-
-import { randomUUID } from 'node:crypto'
 import {
   query as officialQuery,
   type Options,
@@ -34,6 +32,8 @@ import {
   claudeSpawnSpec,
   ManagedClaudeCodeProcess,
 } from './process.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /** Default POSIX grace between subprocess termination tiers. */
 export const DEFAULT_DISPOSE_GRACE_MS = 3_000

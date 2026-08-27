@@ -4,8 +4,6 @@
  * stage an exclusive owner-only file in a private sibling directory and atomically publish it.
  * @module @deepseek-ai/dsh-fs-local/fsio
  */
-
-import { randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { chmod, link, lstat, mkdir, open, readFile, realpath, readdir, rename, rm, stat } from 'node:fs/promises'
 import type { BigIntStats, Dirent, Stats } from 'node:fs'
@@ -13,6 +11,8 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { TextDecoder } from 'node:util'
 import { FsError, FsTargetKey, FsVersion } from '@deepseek-ai/dsh-fs'
 import { copyFileDaclWin32, replaceFileWin32 } from './win32.ts'
+
+import { randomUUID } from 'node:crypto'
 
 const BINARY_SAMPLE_BYTES = 8192
 // Bound one non-abortable FileHandle.read so cancellation is observed between chunks.

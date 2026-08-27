@@ -3,8 +3,7 @@
  * @module @deepseek-ai/dsh-message-feedback
  */
 
-import { Buffer } from 'node:buffer'
-import { randomUUID } from 'node:crypto'
+import { Buffer } from 'buffer'
 import { Context, Service } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import { deriveEventMessage, isAppendSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
@@ -33,6 +32,8 @@ import type {
   MessageFeedbackVersion,
   MessageFeedbackVersionConflict,
 } from './types.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export type * from './types.ts'
 export {

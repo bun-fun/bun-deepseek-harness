@@ -1,6 +1,6 @@
 /** Streaming terminal-control sanitizer for the line-oriented first release. */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 
 /** OSC marker emitted by the controlled bash before each prompt. */
 export const PROMPT_MARKER_PREFIX = '133;D;'

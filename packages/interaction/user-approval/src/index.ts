@@ -3,8 +3,6 @@
  * answerers fail closed; grants apply only to the requested action.
  * @module @deepseek-ai/dsh-user-approval
  */
-
-import { randomUUID } from 'node:crypto'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
@@ -74,6 +72,8 @@ declare module '@deepseek-ai/dsh-session/types' {
 
 import { ApprovalRequestId } from './types.ts'
 import type { ApprovalOutcome } from './types.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export { ApprovalRequestId } from './types.ts'
 export type { ApprovalOutcome } from './types.ts'

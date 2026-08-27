@@ -16,7 +16,7 @@ import {
 } from '@agentclientprotocol/sdk'
 import { Readable, Writable } from 'node:stream'
 import { promisify } from 'node:util'
-import { zstdDecompress } from 'node:zlib'
+
 import { execa } from 'execa'
 import { afterEach, describe, expect, it } from 'vitest'
 

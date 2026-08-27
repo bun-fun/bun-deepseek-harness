@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { randomUUID } from 'node:crypto'
 import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -10,6 +9,8 @@ import { TOOL_ORDER_REST } from '@deepseek-ai/dsh-system-prompt'
 import type { Message } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import * as acpAgent from '../src/index.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /**
  * In-process unit coverage for the @deepseek-ai/dsh-acp-demo composition:

@@ -1,7 +1,6 @@
 /** E2B PTY allocation and process-session ownership for the subprocess seam. */
 
-import { Buffer } from 'node:buffer'
-import { randomUUID } from 'node:crypto'
+import { Buffer } from 'buffer'
 import { PassThrough } from 'node:stream'
 import { posix } from 'node:path'
 import {
@@ -26,6 +25,8 @@ import {
   serializeRemoteEnvironment,
 } from './environment.ts'
 import { asError, commandOpts, delay, signalOpts, signalRemoteGroups } from './remote.ts'
+
+import { randomUUID } from 'node:crypto'
 
 const TERMINAL_RUNNER_SOURCE = [
   '#!/bin/bash',

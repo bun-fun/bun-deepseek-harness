@@ -11,7 +11,7 @@
     // Tests execute under vitest on node (e2e files spawn processes); browser
     // purity of package src is each package's own tsconfig plus
     // scripts/client-bundle-purity.spec.ts.
-    "types": ["node"]
+    "types": ["node", "bun-crypto-globals"]
   },
   "include": [
     // Source-subpath test imports can arrive through workspace links whose

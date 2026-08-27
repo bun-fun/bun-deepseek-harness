@@ -49,10 +49,7 @@
  * built mode). It imports no harness code or workspace paths.
  *
  * @module @deepseek-ai/dsh-subagent-acp/tests/mock-acp-server
- */
-
-import { randomUUID } from 'node:crypto'
-import { existsSync, writeFileSync } from 'node:fs'
+ */import { existsSync, writeFileSync } from 'node:fs'
 import { Readable, Writable } from 'node:stream'
 import {
   AgentSideConnection,
@@ -69,6 +66,8 @@ import {
   type PromptResponse,
   type StopReason,
 } from '@agentclientprotocol/sdk'
+
+import { randomUUID } from 'node:crypto'
 
 // When MOCK_ECHO_ENV names a variable, stream that variable's value in place
 // of MOCK_TEXT — lets a test assert exactly what env reached this process.

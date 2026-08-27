@@ -6,12 +6,12 @@
  *
  * @module @deepseek-ai/dsh-sdk-client/api
  */
-
-import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { HarnessClient, isRecord, SdkProtocolError } from './client.ts'
 import type { ContentBlock, DeepSeekHarnessOptions, HarnessClientOptions, HarnessNotification, RunResult } from './types.ts'
+
+import { randomUUID } from 'node:crypto'
 
 /**
  * Reusable SDK for running DeepSeek Harness agent turns in a runtime

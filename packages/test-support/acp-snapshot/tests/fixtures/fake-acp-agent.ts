@@ -20,8 +20,9 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { readdirSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { dirname, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 import { createInterface } from 'node:readline'
+
+import { randomUUID } from 'node:crypto'
 
 /** One scripted session log: a transcript path under the sessions root plus its JSONL lines. */
 interface ScriptedLog {

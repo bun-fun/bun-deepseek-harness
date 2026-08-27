@@ -5,6 +5,7 @@
  * the product's Chinese copy states the browser it assumes instead of
  * inheriting the machine's.
  */
+
 import { afterEach, beforeEach } from 'vitest'
 
 /**

@@ -4,8 +4,6 @@
  * domain data form.
  * @module @deepseek-ai/dsh-workspace
  */
-
-import { randomUUID } from 'node:crypto'
 import { stat } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
@@ -20,6 +18,8 @@ import { realpathNormalize } from './paths.ts'
 import { workspaceDomainSpec } from './spec.ts'
 import type { WorkspaceDomainState, WorkspaceRecord } from './spec.ts'
 import type { Workspace, WorkspaceId as WorkspaceIdBrand } from './types.ts'
+
+import { randomUUID } from 'node:crypto'
 
 export type { Workspace } from './types.ts'
 export { workspaceDomainState, workspaceRecord, workspaceDomainSpec } from './spec.ts'

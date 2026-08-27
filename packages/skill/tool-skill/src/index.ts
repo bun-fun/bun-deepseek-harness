@@ -3,8 +3,6 @@
  *
  * @module @deepseek-ai/dsh-tool-skill
  */
-
-import { createHash } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -20,6 +18,8 @@ import {
   type SkillInvocationSource,
   type SkillSummary,
 } from '@deepseek-ai/dsh-skill'
+
+import { createHash } from 'node:crypto'
 
 export const name = 'tool-skill'
 export const inject = ['agents', 'tools', 'skills']

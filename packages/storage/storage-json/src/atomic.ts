@@ -13,8 +13,8 @@
 
 import { open, rename, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { randomUUID } from 'node:crypto'
 
+import { randomUUID } from 'node:crypto'
 /**
  * Durably replace `path` with `data`.
  * @param path - Absolute target file path.

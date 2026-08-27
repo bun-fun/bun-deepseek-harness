@@ -1,6 +1,6 @@
 /** Local node-pty terminal-process implementation for the subprocess seam. */
 
-import { Buffer } from 'node:buffer'
+import { Buffer } from 'buffer'
 import { constants } from 'node:os'
 import { PassThrough } from 'node:stream'
 import type { IDisposable, IPty } from 'node-pty'

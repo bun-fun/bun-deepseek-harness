@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
 import {
   mkdirSync,
   mkdtempSync,
@@ -22,6 +21,8 @@ import {
   startDeepSeekResponsesBridge,
   type DeepSeekResponsesBridge,
 } from './deepseek-responses-bridge.ts'
+
+import { randomUUID } from 'node:crypto'
 
 const execFileAsync = promisify(execFile)
 const packageRoot = resolve(fileURLToPath(new URL('..', import.meta.url)))

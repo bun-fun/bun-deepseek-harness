@@ -1,6 +1,4 @@
 /** Host-side WebSocket carrier for the two server-to-browser event streams. */
-
-import { randomUUID } from 'node:crypto'
 import type { IncomingMessage } from 'node:http'
 import type { Duplex } from 'node:stream'
 import WebSocket, { WebSocketServer } from 'ws'
@@ -8,6 +6,8 @@ import type {
   ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest,
 } from '@deepseek-ai/dsh-host-apiproxy/api'
 import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
+
+import { randomUUID } from 'node:crypto'
 
 type Frame = MuxFrame | HostFrame
 

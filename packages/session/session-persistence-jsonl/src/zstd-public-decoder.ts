@@ -3,8 +3,10 @@
  * @module dsh-session-persistence-jsonl/zstd-public-decoder
  */
 
-import { zstdDecompressSync } from 'node:zlib'
+
 import type { ZstdFrameDecoder, ZstdFrameRange } from './zstd.ts'
+
+import { zstdDecompressSync } from 'node:zlib'
 
 /** Multi-frame adapter built exclusively from Node's supported one-shot API. */
 export class PublicZstdFrameDecoder implements ZstdFrameDecoder {

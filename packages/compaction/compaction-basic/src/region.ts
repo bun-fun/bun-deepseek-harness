@@ -4,8 +4,6 @@
  *
  * @module @deepseek-ai/dsh-compaction-basic/region
  */
-
-import { randomUUID } from 'node:crypto'
 import { isDeepStrictEqual } from 'node:util'
 import {
   CompactionId,
@@ -23,6 +21,8 @@ import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { frameSummary } from './summarizer.ts'
 import type { SummarizationInput, SummaryResult } from './summarizer.ts'
+
+import { randomUUID } from 'node:crypto'
 
 interface RegionDependencies {
   readonly meter: TokenMeter

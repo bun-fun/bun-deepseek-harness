@@ -18,10 +18,7 @@
  * changes reach the graph only through
  * {@link ClientModuleRegistry.rebuilt}.
  * @module @deepseek-ai/dsh-client-modules
- */
-
-import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+ */import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
@@ -31,6 +28,8 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
 import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
+
+import { createHash } from 'node:crypto'
 
 export type {
   BootManifest, BootModuleRow, BootPluginRow, WebBootEntry, WebBootGraph,

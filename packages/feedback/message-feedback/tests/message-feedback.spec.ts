@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
@@ -15,6 +14,8 @@ import {
   setupHarness,
   type TestHarness,
 } from './helpers.ts'
+
+import { randomUUID } from 'node:crypto'
 
 const harnesses: TestHarness[] = []
 

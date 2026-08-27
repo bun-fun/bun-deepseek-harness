@@ -3,9 +3,11 @@
  * @module dsh-session-persistence-jsonl/zstd-private-decoder
  */
 
-import { constants as bufferConstants } from 'node:buffer'
-import { createZstdDecompress } from 'node:zlib'
+import { constants as bufferConstants } from 'buffer'
+
 import type { ZstdFrameDecoder, ZstdFrameRange } from './zstd.ts'
+
+import { createZstdDecompress } from 'node:zlib'
 
 const DECODE_CHUNK_SIZE = 1024 * 1024
 

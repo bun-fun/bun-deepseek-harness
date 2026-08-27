@@ -5,7 +5,7 @@
  */
 
 import { Context } from '@deepseek-ai/cordis'
-import { constants as bufferConstants } from 'node:buffer'
+import { constants as bufferConstants } from 'buffer'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import z from '@deepseek-ai/schemastery'

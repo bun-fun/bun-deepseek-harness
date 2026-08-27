@@ -1,6 +1,4 @@
 /** Content-addressed, owner-private local attachment storage. */
-
-import { createHash, randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { chmod, link, mkdir, open, readFile, unlink } from 'node:fs/promises'
 import { dirname, join, parse, resolve } from 'node:path'
@@ -15,6 +13,8 @@ import type {
   StoredImageAttachment,
 } from '@deepseek-ai/dsh-attachment'
 import { detectImage, probeImage } from './image.ts'
+
+import { randomUUID, createHash } from 'node:crypto'
 
 const ID_PATTERN = /^sha256:([a-f0-9]{64})$/
 const durableHomes = new Set<string>()

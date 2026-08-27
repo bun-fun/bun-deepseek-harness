@@ -11,14 +11,14 @@
  * cannot clobber each other's ACEs.
  * @module @deepseek-ai/dsh-sandbox-windows-acl/acl
  */
-
-import { createHash } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { allocOverlapped, allocPtrSlot, decodePtr, decodeUint8At, decodeUint16At, decodeUint32At, getTempPath, isInvalidHandle, isNullPtr, ptrAddress, sameSidAt, throwLastError, throwWin32 } from './ffi.ts'
 import type { NativePtr, Win32Bindings } from './ffi.ts'
 import * as abi from './win32-abi.ts'
+
+import { createHash } from 'node:crypto'
 
 /**
  * Pack one EXPLICIT_ACCESS_W (48 bytes, layout verified by abi-probe.cpp):

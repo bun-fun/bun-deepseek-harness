@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
 import { chmod, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -8,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import sharp from 'sharp'
 import type { ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment'
 import { readImageFile, saveImageFile } from '../src/store.ts'
+
+import { createHash } from 'node:crypto'
 
 const fsControl = vi.hoisted(() => ({
   readSignals: [] as AbortSignal[],

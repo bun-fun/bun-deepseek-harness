@@ -5,10 +5,10 @@
  *
  * @module @deepseek-ai/dsh-sdk-protocol/transport
  */
-
-import { randomUUID } from 'node:crypto'
 import type { Readable, Writable } from 'node:stream'
 import { StringDecoder } from 'node:string_decoder'
+
+import { randomUUID } from 'node:crypto'
 
 type JsonRpcId = string | number
 type RequestHandler = (method: string, params: Record<string, unknown>) => Promise<unknown>
