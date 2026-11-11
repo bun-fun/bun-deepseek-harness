@@ -1,0 +1,62 @@
+name: Fork CI (Bun)
+
+# This fork replaces the pnpm pipeline with Bun. The upstream workflows remain
+# unchanged in .github/workflows so upstream syncs stay conflict-free; they are
+# disabled in this repository's Actions settings (see the bun-runtime Agent
+# Note). This is the only workflow that runs here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Never report to the production telemetry endpoint baked into apps/cli/cordis.yml.
+  DSH_TELEMETRY_DISABLED: '1'
+
+concurrency:
+  group: fork-bun-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    if: github.repository == 'bun-fun/bun-deepseek-harness'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run typecheck
+
+  test:
+    if: github.repository == 'bun-fun/bun-deepseek-harness'
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run test -- --shard=${{ matrix.shard }}
